@@ -1,0 +1,29 @@
+---
+// Products from the shop, read live: the newest, or those of a collection or category.
+import type { Block } from "../lib/cms"
+import ProductCard from "../components/ProductCard.astro"
+import { api } from "../lib/medusa"
+import { categoryByPath, collectionByHandle, products } from "../lib/store"
+type Props = { block: Block; first?: boolean }
+const { block: b } = Astro.props
+const shop = Astro.locals.shop
+const a = api(shop, Astro.request)
+const limit = Math.min(24, Math.max(1, Number(b.limit) || 8))
+const list = await (async () => {
+  if (b.show === "collection" && b.handle) {
+    const c = await collectionByHandle(a, b.handle)
+    return c ? (await products(a, shop, { collection: c.id, limit })).products : []
+  }
+  if (b.show === "category" && b.handle) {
+    const c = await categoryByPath(a, b.handle)
+    return c ? (await products(a, shop, { category: c.id, limit })).products : []
+  }
+  return (await products(a, shop, { limit })).products
+})().catch(() => [])
+---
+{list.length > 0 && (
+  <section class="block products">
+    {b.heading && <h2>{b.heading}</h2>}
+    <ul class="grid">{list.map((p: any) => <ProductCard product={p} />)}</ul>
+  </section>
+)}

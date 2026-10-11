@@ -1,0 +1,20 @@
+/* The editor sits inside the shop's admin (/app/pages and beside it), which has its own menu,
+   account and sign-in, so the editor's own are hidden and it takes the admin's font. The menu
+   keeps its place in the editor's grid, at no width. */
+.template-default,
+.template-default--nav-open,
+.template-default--nav-hydrated {
+  grid-template-columns: 0 minmax(0, 1fr) !important;
+}
+.nav {
+  visibility: hidden;
+}
+.template-default__nav-toggler-wrapper,
+.template-default__nav-overlay,
+.app-header__account,
+.step-nav__home {
+  display: none !important;
+}
+:root {
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}

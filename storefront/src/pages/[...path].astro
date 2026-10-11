@@ -1,0 +1,25 @@
+---
+// The website's pages, from the CMS (cms/src/collections/Pages.ts), at the address each was given.
+// The home page is the CMS's page at /, and the shop's home until there is one. A page asked for
+// without, or with, its last slash is sent to the address it has.
+import Shop from "../layouts/Shop.astro"
+import Blocks from "../blocks/Blocks.astro"
+import ShopHome from "../components/ShopHome.astro"
+import { otherForm, page, reader } from "../lib/cms"
+
+const path = Astro.url.pathname
+const r = reader(Astro.locals.shop.cms, Astro.request)
+const found = await page(r, path)
+const shopHome = !found && path === "/"
+if (!found && !shopHome) {
+  const other = otherForm(path)
+  const there = other ? await page(r, other) : null
+  if (there) return Astro.redirect(there.path + Astro.url.search, 301)
+  return Astro.rewrite("/404")
+}
+---
+{shopHome ? <ShopHome /> : found && (
+<Shop title={found.path === "/" ? undefined : found.title} description={found.description ?? undefined} image={typeof found.image === "object" ? found.image?.url ?? undefined : undefined} noindex={!!found.noindex || r.preview} head={found.head ?? undefined} preview={r.preview}>
+  <Blocks blocks={found.layout} />
+</Shop>
+)}
