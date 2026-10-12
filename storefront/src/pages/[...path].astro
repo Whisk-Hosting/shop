@@ -5,7 +5,7 @@
 import Shop from "../layouts/Shop.astro"
 import Blocks from "../blocks/Blocks.astro"
 import ShopHome from "../components/ShopHome.astro"
-import { otherForm, page, reader } from "../lib/cms"
+import { otherForm, page, pageTitle, reader } from "../lib/cms"
 
 const path = Astro.url.pathname
 const r = reader(Astro.locals.shop.cms, Astro.request)
@@ -19,7 +19,7 @@ if (!found && !shopHome) {
 }
 ---
 {shopHome ? <ShopHome /> : found && (
-<Shop title={found.path === "/" ? undefined : found.title} description={found.description ?? undefined} image={typeof found.image === "object" ? found.image?.url ?? undefined : undefined} noindex={!!found.noindex || r.preview} head={found.head ?? undefined} preview={r.preview}>
+<Shop fullTitle={pageTitle(found, Astro.locals.shop.name)} description={found.description ?? undefined} image={typeof found.image === "object" ? found.image?.url ?? undefined : undefined} noindex={!!found.noindex || r.preview} head={found.head ?? undefined} preview={r.preview}>
   <Blocks blocks={found.layout} />
 </Shop>
 )}

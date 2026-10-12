@@ -4,7 +4,7 @@ import path from "node:path"
 import type { Payload } from "payload"
 import { convertHTMLToLexical, editorConfigFactory } from "@payloadcms/richtext-lexical"
 import { JSDOM } from "jsdom"
-import { fileRefs, insideContent, mimeOf, resolved } from "./content"
+import { altFrom, fileRefs, insideContent, mimeOf, resolved } from "./content"
 
 const readJson = (file: string): unknown => JSON.parse(readFileSync(file, "utf8"))
 const jsonIn = (dir: string) => (existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".json")).sort().map((f) => path.join(dir, f)) : [])
@@ -28,13 +28,15 @@ export const importContent = async (payload: Payload, root: string): Promise<voi
         continue
       }
       const data = readFileSync(full)
-      const made = await payload.create({
-        collection: "media",
-        data: { alt: ref.alt ?? "", source: ref.file },
-        file: { data, mimetype: mimeOf(full), name: path.basename(full), size: data.length },
-        overrideAccess: true,
-      })
-      ids.set(ref.file, made.id)
+      const made = await payload
+        .create({
+          collection: "media",
+          data: { alt: ref.alt?.trim() || altFrom(ref.file), source: ref.file },
+          file: { data, mimetype: mimeOf(full), name: path.basename(full), size: data.length },
+          overrideAccess: true,
+        })
+        .catch((e: Error) => payload.logger.warn(`content: ${ref.file} is left out: ${e.message}`))
+      if (made) ids.set(ref.file, made.id)
     }
     return ids
   }
@@ -52,15 +54,20 @@ export const importContent = async (payload: Payload, root: string): Promise<voi
     })
   }
 
-  for (const file of jsonIn(path.join(root, "pages"))) await add("pages", "path", file)
-  for (const file of jsonIn(path.join(root, "product-pages"))) await add("product-pages", "handle", file)
+  // Each file is added on its own: one that cannot be added is named in the log and the rest
+  // still are.
+  const alone = (file: string, work: () => Promise<unknown>) =>
+    work().catch((e: Error) => payload.logger.warn(`content: ${path.basename(file)} is left out: ${e.message}`))
+
+  for (const file of jsonIn(path.join(root, "pages"))) await alone(file, () => add("pages", "path", file))
+  for (const file of jsonIn(path.join(root, "product-pages"))) await alone(file, () => add("product-pages", "handle", file))
 
   const menus = path.join(root, "menus.json")
-  if (existsSync(menus)) {
+  if (existsSync(menus)) await alone(menus, async () => {
     const current = (await payload.findGlobal({ slug: "menus", depth: 0, overrideAccess: true })) as { updatedAt?: string | null }
     if (!current.updatedAt) {
       const doc = readJson(menus)
       await payload.updateGlobal({ slug: "menus", data: resolved(doc, await mediaIds(doc), toRichText) as never, overrideAccess: true })
     }
-  }
+  })
 }

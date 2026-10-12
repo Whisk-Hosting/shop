@@ -1,4 +1,123 @@
-# whisk-shop
+<p align="center">
+  <a href="https://whisk.run">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://github.com/whisk-hosting/cli/raw/main/.github/whisk-wordmark-light-ink.svg">
+      <img alt="Whisk" src="https://github.com/whisk-hosting/cli/raw/main/.github/whisk-wordmark.svg" width="220">
+    </picture>
+  </a>
+</p>
+
+<h1 align="center">Shop</h1>
+
+<p align="center">
+  <strong>A business's website and online shop in one, with one admin, live on Whisk from one prompt.</strong>
+</p>
+
+<p align="center">
+  <img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-14213d">
+  <img alt="Medusa" src="https://img.shields.io/badge/commerce-Medusa-14213d">
+  <img alt="Payload" src="https://img.shields.io/badge/editor-Payload-14213d">
+  <img alt="Astro" src="https://img.shields.io/badge/pages-Astro-14213d">
+  <img alt="NZD and AUD with GST" src="https://img.shields.io/badge/sells%20in-NZD%20%7C%20AUD-e3a92b">
+</p>
+
+<p align="center">
+  <a href="#put-it-live">Put it live</a> ·
+  <a href="#what-you-get">What you get</a> ·
+  <a href="#make-it-yours">Make it yours</a> ·
+  <a href="#what-whisk-is">What Whisk is</a> ·
+  <a href="#how-it-works">How it works</a>
+</p>
+
+<p align="center">
+  <img alt="The shop's home page" src=".github/home.webp" width="900">
+</p>
+
+## Put it live
+
+Give your coding agent (Claude Code, Codex, Cursor, Gemini CLI or any other) this prompt:
+
+> Read https://whisk.run/skill and install the Whisk CLI. Then, in a new empty folder, run
+> `whisk init --template shop` and `whisk deploy`, and give me the address the shop is live at
+> and the address of its admin. If it needs more memory, tell me where to turn on Boost.
+
+Or run it yourself:
+
+```sh
+curl -fsSL https://whisk.run/install.sh | sh     # Windows: irm https://whisk.run/install.ps1 | iex
+mkdir my-shop && cd my-shop
+whisk login
+whisk init --template shop
+whisk deploy
+```
+
+The shop is live at `https://<app>--<business>.whisk.page`, selling in New Zealand dollars with
+GST included. Open `/app` on it and sign in with your Whisk account to add products and pages.
+It needs about 700 MB of memory: a paid Whisk plan with Boost on the app, or a Promoted app,
+which an owner turns on from the app's page in the dashboard. Customers can pay by bank transfer
+as soon as the business's account number is in the admin; cards, Apple Pay, Google Pay, Afterpay,
+Windcave and PayPal switch on when their keys are set ([Take payments](#take-payments)).
+
+## What you get
+
+<p align="center">
+  <img alt="Editing the home page in the admin, with the live preview beside it" src=".github/editor.webp" width="900">
+</p>
+
+- **One admin for everything** at `/app`: orders, products, stock, customers, promotions and
+  price lists beside Pages, Product pages, Menu and Media. The team signs in with their Whisk
+  accounts, so there are no passwords to share.
+- **A shop**: categories, collections, search, a cart, checkout, customer accounts with an
+  emailed sign-in code or a password, order history, and order and password emails.
+- **Payments**: cards, Apple Pay, Google Pay and Afterpay through Stripe, cards through
+  Windcave, PayPal, and bank transfer, with payment taken when an order is placed or when it is
+  sent.
+- **New Zealand or Australia**: prices in NZD with 15% GST or AUD with 10% GST, included in
+  prices or added at checkout, with delivery set up on the first deploy.
+- **A website around it**: pages built from blocks (hero, text, picture, columns, products,
+  form, HTML) at any address, and a story under each product's live price, options and stock.
+- **A live preview** beside the editor that follows each change, drafts only the team can see,
+  and every earlier version kept.
+- **Forms** that save each entry in the shop's own database, behind a bot check.
+- **Search engines covered**: one `sitemap.xml` and `robots.txt` for the shop and the website,
+  page titles and descriptions, and old addresses sent to new ones in one hop.
+- **Built for phones first**, with every page drawn on the server.
+- **Hosting handled by Whisk**: HTTPS, your own domain, backups, logs, storage for product
+  pictures, email, and a move to another server by itself if one fails.
+- **Trade ordering** for businesses that sell to other businesses (companies, trade prices,
+  approvals, pay on account) comes with a Promoted app.
+
+<p align="center">
+  <img alt="The products in the admin" src=".github/admin.webp" width="440">
+  &nbsp;
+  <img alt="A product on a phone" src=".github/phone.webp" width="240">
+</p>
+
+## Make it yours
+
+The live shop is a plain, tidy start. Ask your agent for the rest, in the same folder:
+
+> Restyle this shop for my business, Maple Street Coffee, a roastery in Portland. Use warm colors
+> and a serif for headings, add our three coffees and a pour-over kit with their prices, and an "Our
+> story" page, then deploy it.
+
+> Take card payments with Stripe and tell me exactly where to paste each key.
+
+> Point shop.example.com at this shop.
+
+Products, prices, stock, words and pictures are changed in the admin by anyone on the team; the
+look and new kinds of blocks are changed in the code, by the agent.
+
+## What Whisk is
+
+[Whisk](https://whisk.run) is hosting for business apps and websites built by AI coding agents.
+The agent installs the `whisk` CLI, describes the app in `whisk.yaml` and runs `whisk deploy`;
+Whisk supplies sign-in, a Postgres database, backups, storage, email, scheduled jobs and
+security, so the agent writes only the app. This shop is one of its starting points, with the
+[website](https://github.com/whisk-hosting/site) and the starter apps in the
+[CLI](https://github.com/whisk-hosting/cli).
+
+## How it works
 
 A business's website and online shop on Whisk, headless, in one app on one address. Astro draws
 every page from two back ends beside it: [Medusa](https://medusajs.com) for products, prices,
@@ -45,7 +164,7 @@ cms/                        Payload: pages, product pages, menus, media, its mig
 scripts/shop.mjs            build, start, migrate, dev
 ```
 
-## Run it
+## Run it on your computer
 
 `whisk dev` needs Docker with the compose plugin. It starts Postgres, the cache and a local edge,
 then runs the shop with the environment it has in production:
@@ -79,11 +198,11 @@ before tax, the tax on its own line, then the total.
 ## Start with a catalogue
 
 `catalogue/catalogue.json` lists products to start with: `{"products": [{"handle":
-"impairment-goggles", "title": "Impairment Goggles", "price": 325, "sku": "IG", "categories":
-["Goggles"], "options": [{"title": "Type", "values": ["Low", "High"]}], "images":
-["goggles.jpg"]}]}`. Prices are entered as the market enters them (with or without tax);
+"ethiopia-guji", "title": "Ethiopia Guji, 250 g", "price": 24, "sku": "ETH-250", "categories":
+["Coffee"], "options": [{"title": "Grind", "values": ["Whole beans", "Ground"]}], "images":
+["guji.jpg"]}]}`. Prices are entered as the market enters them (with or without tax);
 `inStock: false` lists a product as sold out until staff add stock. A picture is a file in
-`catalogue/images`, stored on Whisk, or an address (`/catalogue/goggles.jpg` from
+`catalogue/images`, stored on Whisk, or an address (`/catalogue/guji.jpg` from
 `storefront/public`, or `https://…`) used as it is. A job adds every product and category the
 shop does not have yet, by handle, within a minute of each deploy, so products staff change in
 the admin are never overwritten.
@@ -113,3 +232,8 @@ and `cd cms && npm run typecheck` those of the editor.
 ## Ship it
 
 `whisk doctor`, then `whisk deploy -m "<what changed, for the shop's customers and staff>"`.
+
+## Licence
+
+MIT. The photographs in the screenshots are from [Unsplash](https://unsplash.com), and Maple
+Street Coffee is made up.

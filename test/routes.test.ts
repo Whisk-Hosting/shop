@@ -45,13 +45,13 @@ test("forms", () => {
   assert.equal(formName("/forms/contact"), "contact")
   assert.equal(formName("/forms/get-a-quote-2"), "get-a-quote-2")
   for (const p of ["/forms/", "/forms/Contact", "/forms/a/b", "/forms/" + "x".repeat(41), "/form/contact"]) assert.equal(formName(p), null, p)
-  assert.deepEqual(formFields("application/x-www-form-urlencoded", "name=Mere&email=mere%40example.nz"), { name: "Mere", email: "mere@example.nz" })
-  assert.deepEqual(formFields("application/json", '{"name":"Mere"}'), { name: "Mere" })
+  assert.deepEqual(formFields("application/x-www-form-urlencoded", "name=Mary&email=mary%40example.com"), { name: "Mary", email: "mary@example.com" })
+  assert.deepEqual(formFields("application/json", '{"name":"Mary"}'), { name: "Mary" })
   assert.equal(formFields("application/json", "[1]"), null)
   assert.equal(formFields("application/json", "{"), null)
   assert.equal(anyFilled({ name: " ", altcha: "" }), false)
   assert.equal(anyFilled({}), false)
-  assert.equal(anyFilled({ name: "Mere" }), true)
+  assert.equal(anyFilled({ name: "Mary" }), true)
   assert.equal(formReturn("https://example.com/contact?x=1", "contact"), "/contact?x=1&sent=contact")
   assert.equal(formReturn(undefined, "contact"), "/?sent=contact")
   assert.equal(formReturn("https://example.com//evil.com/x", "contact"), "/?sent=contact")
@@ -72,7 +72,7 @@ test("staticFile serves built files and nothing outside them", () => {
 })
 
 test("who may run the shop", () => {
-  const p = (audience: string, roles: string, id = "u1", email = "a@b.nz") => personFrom({ "x-whisk-audience": audience, "x-whisk-roles": roles, "x-whisk-user-id": id, "x-whisk-email": email })
+  const p = (audience: string, roles: string, id = "u1", email = "a@b.com") => personFrom({ "x-whisk-audience": audience, "x-whisk-roles": roles, "x-whisk-user-id": id, "x-whisk-email": email })
   assert.equal(isStaff(p("team", "owner")), true)
   assert.equal(isStaff(p("team", "member,billing")), true)
   assert.equal(isStaff(p("team", "member,guest")), true)
@@ -96,7 +96,7 @@ test("the admin sign-in returns only to the admin", () => {
 })
 
 test("names split into first and last", () => {
-  assert.deepEqual(splitName("Mere Hohaia"), { first_name: "Mere", last_name: "Hohaia" })
+  assert.deepEqual(splitName("Mary Smith"), { first_name: "Mary", last_name: "Smith" })
   assert.deepEqual(splitName("  Mary  Ann  Smith "), { first_name: "Mary", last_name: "Ann Smith" })
   assert.deepEqual(splitName(""), { first_name: "", last_name: "" })
 })

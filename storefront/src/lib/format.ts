@@ -33,6 +33,13 @@ export const variantFor = <V extends { id: string; options?: { option_id?: strin
 ): V | null =>
   variants.find((v) => Object.entries(chosen).every(([optionId, value]) => (v.options ?? []).some((o) => o.option_id === optionId && o.value === value))) ?? null
 
+// A line's variant, worth showing beside its product: not when it only repeats the product's title
+// or is the one variant a product with no options has.
+export const variantLabel = (line: { title?: string | null; product_title?: string | null; variant_title?: string | null }) => {
+  const v = line.variant_title?.trim()
+  return v && v !== (line.product_title ?? line.title)?.trim() && !/^default( variant)?$/i.test(v) ? v : null
+}
+
 export type AddressInput = {
   first_name: string
   last_name: string

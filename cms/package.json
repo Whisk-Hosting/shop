@@ -1,8 +1,8 @@
 {
-  "name": "whisk-shop-cms",
+  "name": "whisk-cms",
   "version": "1.0.0",
   "private": true,
-  "description": "The shop's pages, menus and media: Payload, edited at /cms.",
+  "description": "The website's pages, menus and media: Payload, edited at /cms.",
   "license": "MIT",
   "type": "module",
   "scripts": {

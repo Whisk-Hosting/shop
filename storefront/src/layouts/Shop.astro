@@ -6,8 +6,8 @@ import { api } from "../lib/medusa"
 import { cart as getCart, categories as getCategories } from "../lib/store"
 import { menus as getMenus, PREVIEW_SCRIPT, reader } from "../lib/cms"
 
-type Props = { title?: string; description?: string; canonical?: string; noindex?: boolean; image?: string; head?: string; preview?: boolean }
-const { title, description, canonical, noindex, image, head, preview } = Astro.props
+type Props = { title?: string; fullTitle?: string; description?: string; canonical?: string; noindex?: boolean; image?: string; head?: string; preview?: boolean }
+const { title, fullTitle: given, description, canonical, noindex, image, head, preview } = Astro.props
 const shop = Astro.locals.shop
 const a = api(shop, Astro.request)
 const [cart, cats, menus] = await Promise.all([
@@ -17,7 +17,7 @@ const [cart, cats, menus] = await Promise.all([
 ])
 const count = (cart?.items ?? []).reduce((n: number, i: any) => n + Number(i.quantity), 0)
 const top = cats.filter((c: any) => !c.parent_category_id).sort((x: any, y: any) => (x.rank ?? 0) - (y.rank ?? 0)).slice(0, 12)
-const fullTitle = title ? `${title} | ${shop.name}` : shop.name
+const fullTitle = given ?? (title ? `${title} | ${shop.name}` : shop.name)
 const url = canonical ?? new URL(Astro.url.pathname, Astro.url).toString()
 const q = Astro.url.searchParams.get("q") ?? ""
 ---

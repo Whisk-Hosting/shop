@@ -26,6 +26,8 @@ secrets: []
 env:
   # The port of this machine the editor (cms/) answers on, inside the app only (src/lib/cms.ts).
   CMS_PORT: "9100"
+  # The editor is part of a shop: it offers product pages and the products block (cms/src/app.ts).
+  CMS_SHOP: "1"
   STRIPE_CAPTURE: automatic
   WINDCAVE_ENVIRONMENT: live
   WINDCAVE_CAPTURE: automatic

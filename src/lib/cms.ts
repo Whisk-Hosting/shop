@@ -51,7 +51,7 @@ export const startCms = (log: (line: string) => void = (l) => console.log(l)) =>
   const started = Date.now()
   child = spawn(process.execPath, [next, develop ? "dev" : "start", "-p", String(CMS_PORT), "-H", "127.0.0.1"], {
     cwd: dir,
-    env: { ...process.env, PORT: String(CMS_PORT), NODE_ENV: develop ? "development" : "production", NEXT_TELEMETRY_DISABLED: "1" },
+    env: { ...process.env, PORT: String(CMS_PORT), NODE_ENV: develop ? "development" : "production", NEXT_TELEMETRY_DISABLED: "1", CMS_SHOP: "1" },
     stdio: ["ignore", "inherit", "inherit"],
   })
   child.on("exit", (code, signal) => {

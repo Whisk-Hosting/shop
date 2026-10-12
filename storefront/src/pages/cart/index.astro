@@ -3,7 +3,7 @@ import Shop from "../../layouts/Shop.astro"
 import Totals from "../../components/Totals.astro"
 import { api } from "../../lib/medusa"
 import { cart as getCart } from "../../lib/store"
-import { lineAmount, money, picture } from "../../lib/format"
+import { lineAmount, money, picture, variantLabel } from "../../lib/format"
 
 const shop = Astro.locals.shop
 const cart = await getCart(api(shop, Astro.request), Astro.cookies)
@@ -25,7 +25,7 @@ const failed = Astro.url.searchParams.get("error")
               {pic ? <img src={pic.src} srcset={pic.srcset} alt="" width="72" height="72" /> : <span />}
               <div>
                 <a href={`/products/${i.product_handle ?? i.variant?.product?.handle ?? ""}`}>{i.product_title ?? i.title}</a>
-                {i.variant_title && <div class="muted">{i.variant_title}</div>}
+                {variantLabel(i) && <div class="muted">{variantLabel(i)}</div>}
                 <form method="post" action="/cart/update" class="qty">
                   <input type="hidden" name="line_id" value={i.id} />
                   <label class="skip" for={`q-${i.id}`}>Quantity</label>

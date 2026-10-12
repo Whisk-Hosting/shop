@@ -1,17 +1,34 @@
 // The editor's own pure parts (cms/src): page addresses, starting content, settings, sign-in.
 import { test } from "node:test"
 import assert from "node:assert/strict"
+import { inShop } from "../src/app"
 import { pathProblem } from "../src/paths"
-import { fileRefs, insideContent, isFileRef, mimeOf, resolved } from "../src/content"
+import { altFrom, fileRefs, insideContent, isFileRef, mimeOf, resolved } from "../src/content"
 import { platformUploads, poolFrom, secretFrom } from "../src/settings"
 import { isStaff, personFrom } from "../src/whisk"
 
-test("a page may have any address but the shop's and the server's", () => {
-  for (const p of ["/", "/about", "/about/", "/services/fleet-hire", "/v1.2/notes", "/shopping-guide", "/products-we-love", "/te-reo/kia%20ora"]) assert.equal(pathProblem(p), null, p)
-  for (const p of ["about", "", "/a//b", "/a?b=1", "/a#b", "/a b"]) assert.match(pathProblem(p) ?? "", /path only|starts with/, p)
-  for (const p of ["/shop", "/products/x", "/Cart", "/checkout/", "/account", "/app", "/cms/x", "/store", "/sitemap.xml", "/robots.txt", "/_astro/a.css", "/forms/contact", "/.whisk/img/1"]) {
-    assert.match(pathProblem(p) ?? "", /belongs to the shop/, p)
+test("a page may have any address but the server's, and in a shop the shop's", () => {
+  for (const shop of [true, false]) {
+    for (const p of ["/", "/about", "/about/", "/services/fleet-hire", "/v1.2/notes", "/shopping-guide", "/products-we-love", "/te-reo/kia%20ora"]) assert.equal(pathProblem(p, shop), null, p)
+    for (const p of ["about", "", "/a//b", "/a?b=1", "/a#b", "/a b"]) assert.match(pathProblem(p, shop) ?? "", /path only|starts with/, p)
+    for (const p of ["/app", "/cms/x", "/sitemap.xml", "/robots.txt", "/_astro/a.css", "/_next/x", "/forms/contact", "/.whisk/img/1", "/health"]) {
+      assert.match(pathProblem(p, shop) ?? "", shop ? /belongs to the shop/ : /belongs to the site/, p)
+    }
   }
+  for (const p of ["/shop", "/products/x", "/Cart", "/checkout/", "/account", "/store", "/admin"]) {
+    assert.match(pathProblem(p, true) ?? "", /belongs to the shop/, p)
+    assert.equal(pathProblem(p, false), null, p)
+  }
+})
+
+test("the editor is a shop's when the shop starts it so", () => {
+  assert.equal(inShop({ CMS_SHOP: "1" }), true)
+  assert.equal(inShop({}), false)
+  assert.equal(inShop({ CMS_SHOP: "0" }), false)
+})
+
+test("a picture with no description is described by its file's name", () => {
+  for (const [file, alt] of [["media/team-photo_2.jpg", "team photo 2"], ["uploads/2024/05/Logo.png", "Logo"], ["a.b-c.webp", "a b c"]]) assert.equal(altFrom(file), alt)
 })
 
 test("starting content names files, which become media", () => {
@@ -53,7 +70,7 @@ test("the CMS's settings come from the app's environment", () => {
   const a = secretFrom({ WHISK_DELIVERY_KEY: key, NODE_ENV: "production" })
   assert.match(a, /^[0-9a-f]{64}$/)
   assert.equal(secretFrom({ WHISK_DELIVERY_KEY: key }), a)
-  assert.equal(secretFrom({ NODE_ENV: "production", SHOP_STEP: "migrate" }), "development-only")
+  assert.equal(secretFrom({ NODE_ENV: "production", CMS_STEP: "migrate" }), "development-only")
   assert.equal(secretFrom({ NODE_ENV: "production", NEXT_PHASE: "phase-production-build" }), "development-only")
   assert.throws(() => secretFrom({ NODE_ENV: "production" }), /WHISK_DELIVERY_KEY/)
   assert.equal(platformUploads({ WHISK_SERVICE_TOKEN: "t", WHISK_QUEUE_URL: "https://api/v1/orgs/o/apps/a/events" }), true)

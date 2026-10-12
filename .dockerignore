@@ -7,3 +7,4 @@ storefront/.astro
 cms/node_modules
 cms/.next
 cms/media
+.github

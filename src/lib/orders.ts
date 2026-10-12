@@ -104,7 +104,7 @@ export const orderView = (o: OrderLike, shop: { name: string; url: string }, ban
     displayId: id,
     email: o.email ?? "",
     currency: o.currency_code,
-    lines: items.map((i) => ({ title: i.title, variant: i.variant_title ?? null, quantity: num(i.quantity), total: before(i.total, i.subtotal), thumbnail: i.thumbnail ?? null })),
+    lines: items.map((i) => ({ title: i.title, variant: i.variant_title && i.variant_title !== i.title && !/^default( variant)?$/i.test(i.variant_title) ? i.variant_title : null, quantity: num(i.quantity), total: before(i.total, i.subtotal), thumbnail: i.thumbnail ?? null })),
     subtotal: before(o.item_total, o.item_subtotal),
     shipping: before(o.shipping_total, o.shipping_subtotal),
     discount: num(o.discount_total),

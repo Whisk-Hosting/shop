@@ -1,15 +1,17 @@
 // The site's starting content, in cms/content/, added when the CMS starts: the template's home
-// page, or a moved website's pages (MOVER.md §5.4). Content is only ever added. A page whose
+// page, or a moved website's pages (MOVER.md §5.4 and §5.5). Content is only ever added. A page whose
 // address already has a page, a product page whose handle has one, and a menu someone has saved
 // are left as the team made them, so starting again never undoes an edit.
 //
-//   content/pages/*.json          {title, path, description?, noindex?, head?, image?, layout}
+//   content/pages/*.json          {title, path, searchTitle?, description?, noindex?, head?, image?, layout}
 //   content/product-pages/*.json  {handle, layout}
-//   content/menus.json            {header: [{label, url}], columns: [{heading, links}], note}
+//   content/menus.json            {name?, header: [{label, url}], columns: [{heading, links}], note}
 //   content/media/…               the files they name
 //
-// A file is named where a picture goes as {"file": "media/team.jpg", "alt": "The team"}, and a
-// content block may give its words as {"blockType": "content", "html": "<p>…</p>"}.
+// A file is named where a picture goes as {"file": "media/team.jpg", "alt": "The team"} (with no
+// alt, the file's name in words), and a content block may give its words as
+// {"blockType": "content", "html": "<p>…</p>"}. Each file is added on its own, so one that cannot
+// be added is named in the log and leaves the rest as they are.
 // Pure: what to add and how to read it. src/import.ts adds it; test/cms.test.ts tests this.
 import path from "node:path"
 
@@ -45,6 +47,10 @@ export const resolved = (v: unknown, ids: Map<string, number | string>, toRichTe
   }
   return v
 }
+
+// A picture's description when its page gives none: the words of its file's name.
+export const altFrom = (file: string) =>
+  path.basename(file, path.extname(file)).replace(/[-_.]+/g, " ").replace(/\s+/g, " ").trim()
 
 // A file path inside content/, never outside it.
 export const insideContent = (root: string, file: string): string | null => {

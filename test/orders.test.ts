@@ -6,7 +6,7 @@ import { money, templates } from "../src/lib/emails"
 const order: OrderLike = {
   id: "order_1",
   display_id: 42,
-  email: "kiri@example.nz",
+  email: "jane@example.com",
   currency_code: "nzd",
   metadata: { po_number: "PO-7" },
   item_total: 45,
@@ -16,7 +16,7 @@ const order: OrderLike = {
   total: "55",
   items: [{ title: "Merino Beanie", variant_title: "Charcoal", quantity: 1, total: 45 }],
   shipping_methods: [{ name: "Standard delivery" }],
-  shipping_address: { first_name: "Kiri", last_name: "Tane", address_1: "1 Queen Street", city: "Auckland", postal_code: "1010", country_code: "nz" },
+  shipping_address: { first_name: "Jane", last_name: "Doe", address_1: "100 Main Street", city: "Springfield", postal_code: "1010", country_code: "nz" },
   payment_collections: [{ payment_sessions: [{ provider_id: "pp_system_default" }] }],
 }
 const shop = { name: "Kiwi Goods", url: "https://kiwi.whisk.page" }
@@ -47,7 +47,7 @@ test("orderView shapes an order for its emails", () => {
   assert.equal(v.paymentMethod, "bank_transfer")
   assert.deepEqual(v.bankTransfer, { ...bank, reference: "42" })
   assert.equal(v.poNumber, "PO-7")
-  assert.deepEqual(v.shippingAddress, { name: "Kiri Tane", company: null, lines: ["1 Queen Street", "Auckland 1010", "NZ"] })
+  assert.deepEqual(v.shippingAddress, { name: "Jane Doe", company: null, lines: ["100 Main Street", "Springfield 1010", "NZ"] })
   assert.equal(orderView(order, shop, null).bankTransfer, null)
   assert.equal(orderView({ ...order, payment_collections: [{ payments: [{ provider_id: "pp_stripe_stripe" }] }] }, shop, bank).bankTransfer, null)
 })

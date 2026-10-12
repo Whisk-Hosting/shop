@@ -1,18 +1,18 @@
-/* The editor sits inside the shop's admin (/app/pages and beside it), which has its own menu,
-   account and sign-in, so the editor's own are hidden and it takes the admin's font. The menu
-   keeps its place in the editor's grid, at no width. */
-.template-default,
-.template-default--nav-open,
-.template-default--nav-hydrated {
+/* Inside a shop's admin (/app/pages and beside it, src/admin/Framed.tsx marks it), the admin has
+   its own menu, account and sign-in, so the editor's own are hidden. The menu keeps its place in
+   the editor's grid, at no width. The editor takes the admin's font everywhere. */
+html[data-framed] .template-default,
+html[data-framed] .template-default--nav-open,
+html[data-framed] .template-default--nav-hydrated {
   grid-template-columns: 0 minmax(0, 1fr) !important;
 }
-.nav {
+html[data-framed] .nav {
   visibility: hidden;
 }
-.template-default__nav-toggler-wrapper,
-.template-default__nav-overlay,
-.app-header__account,
-.step-nav__home {
+html[data-framed] .template-default__nav-toggler-wrapper,
+html[data-framed] .template-default__nav-overlay,
+html[data-framed] .app-header__account,
+html[data-framed] .step-nav__home {
   display: none !important;
 }
 :root {

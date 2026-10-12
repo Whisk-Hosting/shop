@@ -2,7 +2,7 @@
 // One order as the customer sees it: what to pay if it waits on a bank transfer, the lines,
 // the totals and where it is going.
 import Totals from "./Totals.astro"
-import { lineAmount, money, picture } from "../lib/format"
+import { lineAmount, money, picture, variantLabel } from "../lib/format"
 type Props = { order: any }
 const o = Astro.props.order
 const bank = Astro.locals.shop.bank
@@ -31,7 +31,7 @@ const addr = o.shipping_address
         {pic ? <img src={pic.src} srcset={pic.srcset} alt="" width="72" height="72" /> : <span />}
         <div>
           <div>{i.product_title ?? i.title}</div>
-          {i.variant_title && <div class="muted">{i.variant_title}</div>}
+          {variantLabel(i) && <div class="muted">{variantLabel(i)}</div>}
           <div class="muted">× {i.quantity}</div>
         </div>
         <div class="price">{money(lineAmount(i, Astro.locals.shop.market.taxInclusive), o.currency_code)}</div>

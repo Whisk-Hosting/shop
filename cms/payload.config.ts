@@ -1,7 +1,8 @@
 // The CMS: Payload, holding the website's pages, menus and media. The storefront (Astro) draws
-// every page from it and from the shop (Medusa); the team edits it at /cms, signed in through
-// Whisk. It shares the app's database, in a schema of its own (cms), and runs beside Medusa in the
-// same app (../src/lib/cms.ts), so the site, the shop and the editor are on one address.
+// every page from it, and in a shop from Medusa too; the team edits it at /cms, signed in through
+// Whisk. It shares the app's database, in a schema of its own (cms), and runs beside the app's
+// server, which starts it (a shop's src/lib/cms.ts, a website's server/cms.mjs), so the site and
+// the editor are on one address. This folder is the same in templates/shop and templates/site.
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { buildConfig } from "payload"
@@ -32,6 +33,7 @@ export default buildConfig({
     dateFormat: "d MMMM yyyy, h:mm a",
     meta: { titleSuffix: " | Pages" },
     importMap: { baseDir: dirname },
+    components: { providers: ["/src/admin/Framed#Framed"] },
     livePreview: {
       breakpoints: [
         { label: "Phone", name: "phone", width: 390, height: 844 },
@@ -43,15 +45,20 @@ export default buildConfig({
   globals: [Menus],
   editor: lexicalEditor(),
   db: postgresAdapter({
-    pool: { ...poolFrom(env.DATABASE_URL ?? "postgres://localhost/shop"), max: 5, connectionTimeoutMillis: 10_000, idleTimeoutMillis: 30_000 },
+    pool: { ...poolFrom(env.DATABASE_URL ?? "postgres://localhost/app"), max: 5, connectionTimeoutMillis: 10_000, idleTimeoutMillis: 30_000 },
     schemaName: "cms",
     migrationDir: path.resolve(dirname, "migrations"),
     push: false,
   }),
   sharp,
-  plugins: platformUploads(env)
-    ? [cloudStoragePlugin({ collections: { media: { adapter: whiskUploads, disableLocalStorage: true, disablePayloadAccessControl: true } } })]
-    : [],
+  // The upload fields are declared everywhere, so a migration made on a laptop matches production.
+  plugins: [
+    cloudStoragePlugin({
+      enabled: platformUploads(env),
+      alwaysInsertFields: true,
+      collections: { media: { adapter: whiskUploads, disableLocalStorage: true, disablePayloadAccessControl: true } },
+    }),
+  ],
   typescript: { outputFile: path.resolve(dirname, "src/payload-types.ts") },
   cors: [publicUrlFrom(env)],
   csrf: [publicUrlFrom(env)],

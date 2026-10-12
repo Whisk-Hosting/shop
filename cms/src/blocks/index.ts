@@ -1,6 +1,8 @@
 // The blocks a page is built from. Each has an Astro component of the same name that draws it
 // (../storefront/src/blocks/), and a moved site adds its own blocks the same way: a file here,
-// listed below, and its component there.
+// listed below, and its component there. A block whose nested names pass Postgres's 63 letters
+// takes a short slug, or `dbName: ({ tableName }) => `${tableName}_short``: a plain-text dbName
+// gives every collection using the block one shared table, and their pages' blocks mix.
 import type { Block, Field } from "payload"
 import { lexicalHTMLField } from "@payloadcms/richtext-lexical"
 
@@ -53,7 +55,7 @@ export const Columns: Block = {
   ],
 }
 
-// Products from the shop (Medusa), read live when the page is drawn.
+// Products from the shop (Medusa), read live when the page is drawn. Offered only in a shop.
 export const Products: Block = {
   slug: "products",
   interfaceName: "ProductsBlock",
@@ -75,7 +77,7 @@ export const Products: Block = {
   ],
 }
 
-// A form that posts to /forms/<name>; each entry is kept in the shop's form_entries table.
+// A form that posts to /forms/<name>; each entry is kept in the app's form_entries table.
 export const Form: Block = {
   slug: "form",
   interfaceName: "FormBlock",

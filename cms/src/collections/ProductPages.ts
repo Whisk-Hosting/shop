@@ -1,6 +1,8 @@
 // What a product's page adds to the shop's product: its story, pictures and details. The page is
-// at /products/<handle>, drawn from Medusa (price, options, stock) and from this.
+// at /products/<handle>, drawn from Medusa (price, options, stock) and from this. A website has
+// the collection too, hidden, so its tables match a shop's.
 import type { CollectionConfig } from "payload"
+import { inShop } from "../app"
 import { productBlocks } from "../blocks"
 import { publishedOrStaff, staff } from "../access"
 import { previewUrl } from "../preview"
@@ -10,6 +12,7 @@ export const ProductPages: CollectionConfig = {
   labels: { singular: "Product page", plural: "Product pages" },
   admin: {
     useAsTitle: "handle",
+    hidden: () => !inShop(),
     defaultColumns: ["handle", "_status", "updatedAt"],
     livePreview: { url: ({ data, req }) => previewUrl(req, `/products/${data?.handle ?? ""}`) },
     preview: (doc, { req }) => previewUrl(req, `/products/${doc?.handle ?? ""}`),

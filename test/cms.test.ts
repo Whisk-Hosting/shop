@@ -23,8 +23,8 @@ test("the CMS is started again after a pause that doubles to a minute", () => {
 })
 
 test("a request's own headers are passed to the CMS, the connection's are not", () => {
-  assert.deepEqual(forwardHeaders({ host: "k.nz", connection: "keep-alive", "x-whisk-user-id": "u1", "transfer-encoding": "chunked", te: "trailers", cookie: "a=b", gone: undefined }), {
-    host: "k.nz",
+  assert.deepEqual(forwardHeaders({ host: "shop.example.com", connection: "keep-alive", "x-whisk-user-id": "u1", "transfer-encoding": "chunked", te: "trailers", cookie: "a=b", gone: undefined }), {
+    host: "shop.example.com",
     "x-whisk-user-id": "u1",
     cookie: "a=b",
   })
@@ -39,9 +39,9 @@ test("a page is found at either form of its address", () => {
 test("a preview is the team's only", () => {
   const req = (url: string, h: Record<string, string> = {}) => new Request(url, { headers: h })
   const team = { "x-whisk-user-id": "u1", "x-whisk-audience": "team", "x-whisk-roles": "member" }
-  assert.equal(reader("http://cms", req("https://k.nz/a?preview=1", team)).preview, true)
-  assert.equal(reader("http://cms", req("https://k.nz/a", team)).preview, false)
-  assert.equal(reader("http://cms", req("https://k.nz/a?preview=1")).preview, false)
-  assert.equal(reader("http://cms", req("https://k.nz/a?preview=1", { ...team, "x-whisk-roles": "guest" })).preview, false)
-  assert.equal(reader("http://cms", req("https://k.nz/a?preview=1", { ...team, "x-whisk-audience": "customer" })).preview, false)
+  assert.equal(reader("http://cms", req("https://shop.example.com/a?preview=1", team)).preview, true)
+  assert.equal(reader("http://cms", req("https://shop.example.com/a", team)).preview, false)
+  assert.equal(reader("http://cms", req("https://shop.example.com/a?preview=1")).preview, false)
+  assert.equal(reader("http://cms", req("https://shop.example.com/a?preview=1", { ...team, "x-whisk-roles": "guest" })).preview, false)
+  assert.equal(reader("http://cms", req("https://shop.example.com/a?preview=1", { ...team, "x-whisk-audience": "customer" })).preview, false)
 })

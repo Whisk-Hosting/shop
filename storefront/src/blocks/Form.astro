@@ -1,5 +1,5 @@
 ---
-// A form posting to /forms/<name> (src/api/middlewares.ts), which keeps each entry and returns
+// A form posting to /forms/<name>, where the app's server keeps each entry and returns
 // here with ?sent=<name>. The edge's challenge keeps robots out; whisk-forms.js solves it.
 import type { Block } from "../lib/cms"
 type Props = { block: Block; first?: boolean }

@@ -1,5 +1,5 @@
 // Reading the website's pages, product pages and menus from the CMS (Payload, cms/), which runs
-// beside the shop on this machine (src/lib/cms.ts). Published content is kept for a few seconds,
+// beside the app's server on this machine. Published content is kept for a few seconds,
 // so a busy page asks once, and kept longer for when the CMS cannot answer, so pages heal rather
 // than fail while it restarts. A preview (?preview=1, the team only) reads the draft every time.
 
@@ -9,6 +9,7 @@ export type Block = { blockType: string; id?: string } & Record<string, any>
 export type Page = {
   id: number
   title: string
+  searchTitle?: string | null
   path: string
   description?: string | null
   image?: Media | null
@@ -17,8 +18,14 @@ export type Page = {
   layout?: Block[] | null
   updatedAt?: string
 }
+// A page's whole <title>: the one it was given for search results, as a moved page had it, or its
+// title and the site's name, or the site's name alone on the home page.
+export const pageTitle = (p: { title?: string; searchTitle?: string | null; path?: string }, siteName: string) =>
+  p.searchTitle?.trim() || (p.path === "/" || !p.title ? siteName : `${p.title} | ${siteName}`)
+
 export type ProductPage = { handle: string; layout?: Block[] | null }
 export type Menus = {
+  name?: string | null
   header?: { label: string; url: string }[] | null
   columns?: { heading?: string | null; links?: { label: string; url: string }[] | null }[] | null
   note?: string | null

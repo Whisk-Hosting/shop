@@ -1,6 +1,6 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { addressFrom, fromPrice, lineAmount, money, picture, robotsTxt, safeReturn, sitemap, sums, variantFor } from "../storefront/src/lib/format"
+import { addressFrom, fromPrice, lineAmount, money, picture, robotsTxt, safeReturn, sitemap, sums, variantFor, variantLabel } from "../storefront/src/lib/format"
 import { mergedCookies, query } from "../storefront/src/lib/medusa"
 import { passwordProblem, registerProblem } from "../storefront/src/lib/account"
 
@@ -34,8 +34,8 @@ test("variantFor matches every option chosen", () => {
 
 test("addressFrom reads a form or names what is missing", () => {
   const form = new FormData()
-  for (const [k, v] of Object.entries({ first_name: " Kiri ", last_name: "Tane", address_1: "1 Queen Street", city: "Auckland", postal_code: "1010" })) form.set(k, v)
-  assert.deepEqual(addressFrom(form), { address: { first_name: "Kiri", last_name: "Tane", company: undefined, address_1: "1 Queen Street", address_2: undefined, city: "Auckland", postal_code: "1010", province: undefined, country_code: "nz", phone: undefined } })
+  for (const [k, v] of Object.entries({ first_name: " Jane ", last_name: "Doe", address_1: "100 Main Street", city: "Springfield", postal_code: "1010" })) form.set(k, v)
+  assert.deepEqual(addressFrom(form), { address: { first_name: "Jane", last_name: "Doe", company: undefined, address_1: "100 Main Street", address_2: undefined, city: "Springfield", postal_code: "1010", province: undefined, country_code: "nz", phone: undefined } })
   form.delete("city")
   assert.deepEqual(addressFrom(form), { missing: ["city"] })
 })
@@ -60,9 +60,9 @@ test("query leaves out empty values and repeats lists", () => {
 test("passwords and new accounts", () => {
   assert.match(passwordProblem("short") ?? "", /10 characters/)
   assert.equal(passwordProblem("long enough pass"), null)
-  assert.equal(registerProblem({ email: "kiri@example.nz", password: "long enough pass", first_name: "Kiri", last_name: "Tane" }), null)
+  assert.equal(registerProblem({ email: "jane@example.com", password: "long enough pass", first_name: "Jane", last_name: "Doe" }), null)
   assert.match(registerProblem({ email: "nope", password: "long enough pass", first_name: "K", last_name: "T" }) ?? "", /email/)
-  assert.match(registerProblem({ email: "k@e.nz", password: "long enough pass", first_name: "", last_name: "T" }) ?? "", /name/)
+  assert.match(registerProblem({ email: "k@e.com", password: "long enough pass", first_name: "", last_name: "T" }) ?? "", /name/)
 })
 
 test("the sitemap lists each page with its date, escaped", () => {
@@ -72,10 +72,10 @@ test("the sitemap lists each page with its date, escaped", () => {
 })
 
 test("robots.txt keeps the website's lines first, then the shop's", () => {
-  const shop = "User-agent: *\nDisallow: /cart\nDisallow: /checkout\nDisallow: /account\nDisallow: /order/\nDisallow: /app\nDisallow: /cms\n\nSitemap: https://k.nz/sitemap.xml\n"
-  assert.equal(robotsTxt("https://k.nz", undefined), shop)
-  assert.equal(robotsTxt("https://k.nz", "  \n"), shop)
-  assert.equal(robotsTxt("https://k.nz", "User-agent: *\nDisallow: /wp-admin/\n\n"), "User-agent: *\nDisallow: /wp-admin/\n\n# The shop\n" + shop)
+  const shop = "User-agent: *\nDisallow: /cart\nDisallow: /checkout\nDisallow: /account\nDisallow: /order/\nDisallow: /app\nDisallow: /cms\n\nSitemap: https://shop.example.com/sitemap.xml\n"
+  assert.equal(robotsTxt("https://shop.example.com", undefined), shop)
+  assert.equal(robotsTxt("https://shop.example.com", "  \n"), shop)
+  assert.equal(robotsTxt("https://shop.example.com", "User-agent: *\nDisallow: /wp-admin/\n\n"), "User-agent: *\nDisallow: /wp-admin/\n\n# The shop\n" + shop)
 })
 
 test("sums and lineAmount follow whether prices include the tax", () => {
@@ -85,4 +85,11 @@ test("sums and lineAmount follow whether prices include the tax", () => {
   assert.equal(lineAmount({ total: 1163.8, subtotal: 1058 }, true), 1163.8)
   assert.equal(lineAmount({ total: 1163.8, subtotal: 1058 }, false), 1058)
   assert.equal(lineAmount({ total: 10 }, false), 10)
+})
+
+test("a cart line names its variant only when it adds something", () => {
+  assert.equal(variantLabel({ product_title: "LT7", variant_title: "LT7" }), null)
+  assert.equal(variantLabel({ title: "Mug", variant_title: "Default variant" }), null)
+  assert.equal(variantLabel({ product_title: "Goggles", variant_title: "Low" }), "Low")
+  assert.equal(variantLabel({ product_title: "Goggles", variant_title: null }), null)
 })

@@ -26,8 +26,8 @@ export const poolFrom = (raw: string): Pool => {
 // that matters and use a fixed value; a server without the key stops.
 export const secretFrom = (env: Env): string => {
   const key = Buffer.from(env.WHISK_DELIVERY_KEY ?? "", "base64")
-  if (key.length >= 32) return createHmac("sha256", key).update("whisk-shop:cms").digest("hex")
-  const building = env.NEXT_PHASE === "phase-production-build" || env.SHOP_STEP === "migrate" || env.PAYLOAD_MIGRATING === "true"
+  if (key.length >= 32) return createHmac("sha256", key).update("whisk:cms").digest("hex")
+  const building = env.NEXT_PHASE === "phase-production-build" || env.CMS_STEP === "migrate" || env.PAYLOAD_MIGRATING === "true"
   if (building || env.WHISK_DEV === "1" || env.NODE_ENV !== "production") return "development-only"
   throw new Error("WHISK_DELIVERY_KEY is missing: the CMS derives its secret from it.")
 }
