@@ -48,8 +48,9 @@ export type PaymentProvider = { resolve: string; id: string; options: Record<str
 
 // The keys the storefront's pages hand the browser (Stripe's publishable key, PayPal's client
 // id), which are public by design.
-export const browserKeysFrom = (env: Env): { stripe: string | null; paypal: string | null } => ({
+export const browserKeysFrom = (env: Env): { stripe: string | null; stripeTest: string | null; paypal: string | null } => ({
   stripe: env["STRIPE_PUBLISHABLE_KEY"] || null,
+  stripeTest: env["STRIPE_TEST_PUBLISHABLE_KEY"] || null,
   paypal: env["PAYPAL_CLIENT_ID"] || null,
 })
 
@@ -59,14 +60,15 @@ export const ACCOUNT_PROVIDER: PaymentProvider = { resolve: "@whisk/shop-b2b/pro
 
 export const paymentProvidersFrom = (env: Env, trade = false): PaymentProvider[] => {
   const out: PaymentProvider[] = trade ? [ACCOUNT_PROVIDER] : []
-  if (env["STRIPE_API_KEY"]) {
+  if (env["STRIPE_API_KEY"] || env["STRIPE_TEST_API_KEY"]) {
     out.push({
-      // Medusa's Stripe provider, which makes its own webhook unless STRIPE_WEBHOOK_SECRET is set
+      // Medusa's Stripe provider, which makes its own webhook unless STRIPE_WEBHOOK_SECRET is set,
+      // and with STRIPE_TEST_API_KEY beside the shop's key switches to test mode in the admin
       // (src/modules/stripe).
       resolve: "./src/modules/stripe",
       id: "stripe",
       options: {
-        apiKey: env["STRIPE_API_KEY"],
+        apiKey: env["STRIPE_API_KEY"] || env["STRIPE_TEST_API_KEY"],
         webhookSecret: env["STRIPE_WEBHOOK_SECRET"] ?? "",
         // Cards, Apple Pay, Google Pay and Afterpay come from the methods turned on in the
         // Stripe dashboard; the storefront's Payment Element shows whichever apply.

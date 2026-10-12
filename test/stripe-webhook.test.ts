@@ -57,10 +57,10 @@ test("the secret is sealed with the app's own key", () => {
 })
 
 test("the shop makes its endpoint only on a running server that can keep the secret", () => {
-  const env = { STRIPE_API_KEY: "sk_test_1", WHISK_PUBLIC_URL: "https://shop.example.com", DATABASE_URL: "postgres://db/app", WHISK_DELIVERY_KEY: Buffer.alloc(32, 7).toString("base64") }
-  assert.equal(managesWebhook(env), true)
-  assert.equal(managesWebhook(env, true), false)
-  assert.equal(managesWebhook({ ...env, SHOP_STEP: "migrate" }), false)
-  assert.equal(managesWebhook({ ...env, STRIPE_WEBHOOK_SECRET: "whsec_hand" }), false)
-  for (const k of Object.keys(env)) assert.equal(managesWebhook({ ...env, [k]: undefined }), false, k)
+  const env = { WHISK_PUBLIC_URL: "https://shop.example.com", DATABASE_URL: "postgres://db/app", WHISK_DELIVERY_KEY: Buffer.alloc(32, 7).toString("base64") }
+  assert.equal(managesWebhook(env, undefined), true)
+  assert.equal(managesWebhook(env, undefined, true), false)
+  assert.equal(managesWebhook({ ...env, SHOP_STEP: "migrate" }, undefined), false)
+  assert.equal(managesWebhook(env, "whsec_hand"), false)
+  for (const k of Object.keys(env)) assert.equal(managesWebhook({ ...env, [k]: undefined }, undefined), false, k)
 })

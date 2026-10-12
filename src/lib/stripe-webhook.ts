@@ -87,8 +87,7 @@ export const unseal = (key: Buffer, sealed: string | null | undefined): Kept | n
   }
 }
 
-// Whether the shop makes its own endpoint: only a running server with an address to point it at
-// and its own key to seal the secret with, and only when nobody set the secret by hand.
-export const managesWebhook = (env: Record<string, string | undefined>, building = false): boolean =>
-  !building && !env.SHOP_STEP && !!env.STRIPE_API_KEY && !env.STRIPE_WEBHOOK_SECRET && !!env.WHISK_PUBLIC_URL &&
-  !!env.DATABASE_URL && !!sealKeyFrom(env.WHISK_DELIVERY_KEY)
+// Whether the shop makes its own endpoint for a key: only a running server with an address to
+// point it at and its own key to seal the secret with, and only when nobody set the secret by hand.
+export const managesWebhook = (env: Record<string, string | undefined>, manualSecret: string | undefined, building = false): boolean =>
+  !building && !env.SHOP_STEP && !manualSecret && !!env.WHISK_PUBLIC_URL && !!env.DATABASE_URL && !!sealKeyFrom(env.WHISK_DELIVERY_KEY)

@@ -15,7 +15,7 @@ export type Method = { id: string; label: string; kind: "bank_transfer" | "strip
 export const paymentMethods = (shop: ShopContext): Method[] => {
   const has = (id: string) => shop.providers.includes(id)
   const out: Method[] = []
-  if (has("pp_stripe_stripe") && shop.stripeKey) out.push({ id: "pp_stripe_stripe", label: "Card, Apple Pay, Google Pay or Afterpay", kind: "stripe" })
+  if (has("pp_stripe_stripe") && (shop.stripeKey || shop.stripeTestKey)) out.push({ id: "pp_stripe_stripe", label: "Card, Apple Pay, Google Pay or Afterpay", kind: "stripe" })
   if (has("pp_windcave_windcave")) out.push({ id: "pp_windcave_windcave", label: "Credit or debit card", kind: "windcave" })
   if (has("pp_paypal_paypal") && shop.paypalClientId) out.push({ id: "pp_paypal_paypal", label: "PayPal", kind: "paypal" })
   if (has("pp_system_default") && shop.bank) out.push({ id: "pp_system_default", label: "Bank transfer", kind: "bank_transfer" })

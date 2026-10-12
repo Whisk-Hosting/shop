@@ -216,7 +216,7 @@ deploy waits until they have):
 
 | Provider | Secrets |
 |---|---|
-| Stripe | `STRIPE_API_KEY`, `STRIPE_PUBLISHABLE_KEY`; the shop makes its own webhook |
+| Stripe | `STRIPE_API_KEY`, `STRIPE_PUBLISHABLE_KEY`; the shop makes its own webhook. Add `STRIPE_TEST_API_KEY` and `STRIPE_TEST_PUBLISHABLE_KEY` for a test mode switch |
 | Windcave | `WINDCAVE_USERNAME`, `WINDCAVE_API_KEY` |
 | PayPal | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` |
 
@@ -224,7 +224,12 @@ Stripe's webhook needs no setting: on start the shop makes its endpoint at
 `https://<shop>/hooks/payment/stripe_stripe`, keeps its signing secret sealed in its own database,
 follows the shop to a new address, and replaces any other endpoint at that address. A restricted
 key needs Webhook Endpoints: Write as well as what payments need. To manage the endpoint yourself,
-set `STRIPE_WEBHOOK_SECRET` and the shop leaves Stripe's endpoints alone.
+set `STRIPE_WEBHOOK_SECRET` (and `STRIPE_TEST_WEBHOOK_SECRET` for the test keys) and the shop
+leaves Stripe's endpoints alone.
+
+With test keys set too, the admin's Store page has a Stripe test mode switch. New payments use the
+mode it is in, from the next payment on, with no deploy; a payment made in one mode is captured
+and refunded in that mode after a switch, and an order paid in test mode is marked on its page.
 
 `*_CAPTURE: manual` in `whisk.yaml` takes payment when an order is sent rather than when it is
 placed; `WINDCAVE_ENVIRONMENT` and `PAYPAL_ENVIRONMENT` other than `live` use their test

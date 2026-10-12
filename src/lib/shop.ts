@@ -24,6 +24,7 @@ export type StorefrontContext = {
   name: string
   bank: BankAccount | null
   stripeKey: string | null
+  stripeTestKey: string | null
   paypalClientId: string | null
   providers: string[]
   market: Market
@@ -57,6 +58,7 @@ export const storefrontContext = async (scope: MedusaContainer): Promise<Storefr
     name: store?.name || process.env.WHISK_APP_NAME || "Shop",
     bank: bankAccountOf(store?.metadata),
     stripeKey: browserKeysFrom(process.env).stripe,
+    stripeTestKey: browserKeysFrom(process.env).stripeTest,
     paypalClientId: browserKeysFrom(process.env).paypal,
     providers: (region.payment_providers ?? []).map((p: { id: string }) => p.id).filter((id: string) => loaded.has(id)),
     market: marketFrom(process.env),

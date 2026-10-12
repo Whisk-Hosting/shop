@@ -5,6 +5,7 @@ import AddressFields from "../../components/AddressFields.astro"
 import { api } from "../../lib/medusa"
 import { cart as getCart, me } from "../../lib/store"
 import { activeSession, paymentMethods, shippingOptions } from "../../lib/checkout"
+import { publishableFor } from "../../lib/stripe"
 import { lineAmount, money, variantLabel } from "../../lib/format"
 
 const shop = Astro.locals.shop
@@ -78,7 +79,7 @@ const prefill = cart.shipping_address?.address_1 ? cart.shipping_address : saved
         {!deliveryDone ? <p class="muted">Choose delivery first.</p> : methods.length === 0 ? (
           <p class="error">This shop isn't taking payments yet.</p>
         ) : paying && session.provider_id === "pp_stripe_stripe" ? (
-          <form id="stripe-form" data-key={shop.stripeKey} data-secret={session.data?.client_secret} data-return={new URL("/checkout/return/stripe", Astro.url).toString()}>
+          <form id="stripe-form" data-key={publishableFor(session.data?.livemode, [shop.stripeKey, shop.stripeTestKey])} data-secret={session.data?.client_secret} data-return={new URL("/checkout/return/stripe", Astro.url).toString()}>
             <div id="stripe-element"></div>
             <p class="error" id="stripe-error" role="alert"></p>
             <button class="wide" type="submit">Pay {money(cart.total, cart.currency_code)}</button>

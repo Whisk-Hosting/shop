@@ -19,9 +19,10 @@ RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
 COPY --from=whisk-shop-b2b / node_modules/@whisk/shop-b2b/
 # The site editor runs with its own packages, also only what it runs with.
 RUN --mount=type=cache,target=/root/.npm rm -f cms/node_modules && cd cms && npm ci --omit=dev --no-audit --no-fund
-# Medusa's migrate makes an empty migrations folder for each module that ships none; the image's
-# files are read-only to the user it runs as, so the folders are made here.
-RUN for d in node_modules/@medusajs/*/dist; do mkdir -p "$d/migrations"; done
+# Medusa's migrate makes an empty migrations folder for each module that ships none, the shop's
+# own payment providers among them once their keys are set; the image's files are read-only to the
+# user it runs as, so the folders are made here.
+RUN for d in node_modules/@medusajs/*/dist src/modules/*; do mkdir -p "$d/migrations"; done
 
 # The shop runs on Google's distroless Node image: Node and the system libraries it needs, with
 # no shell, package manager or other tools.

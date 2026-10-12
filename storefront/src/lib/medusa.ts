@@ -12,6 +12,7 @@ export type ShopContext = {
   name: string
   bank: { accountName: string; accountNumber: string } | null // for bank transfer (store metadata)
   stripeKey: string | null // STRIPE_PUBLISHABLE_KEY
+  stripeTestKey: string | null // STRIPE_TEST_PUBLISHABLE_KEY, for test mode (src/lib/stripe-mode.ts)
   paypalClientId: string | null
   providers: string[] // payment providers the region takes and the server has loaded
   market: { country: string; currency: string; name: string; locale: string; timeZone: string; taxRate: number; taxName: string; taxInclusive: boolean } // src/lib/market.ts

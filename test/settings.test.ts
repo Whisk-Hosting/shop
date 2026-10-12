@@ -40,6 +40,7 @@ test("paymentProvidersFrom turns on each provider whose keys are set", () => {
   const cases: [Record<string, string>, string[]][] = [
     [{}, []],
     [{ STRIPE_API_KEY: "sk" }, ["stripe"]],
+    [{ STRIPE_TEST_API_KEY: "sk_test" }, ["stripe"]],
     [{ WINDCAVE_USERNAME: "u" }, []],
     [{ WINDCAVE_USERNAME: "u", WINDCAVE_API_KEY: "k" }, ["windcave"]],
     [{ PAYPAL_CLIENT_ID: "id" }, []],
@@ -78,6 +79,7 @@ test("trade ordering is on when the build installed it", () => {
 })
 
 test("browserKeysFrom hands the pages only the public keys", () => {
-  assert.deepEqual(browserKeysFrom({}), { stripe: null, paypal: null })
-  assert.deepEqual(browserKeysFrom({ STRIPE_PUBLISHABLE_KEY: "pk", PAYPAL_CLIENT_ID: "id", STRIPE_API_KEY: "sk" }), { stripe: "pk", paypal: "id" })
+  assert.deepEqual(browserKeysFrom({}), { stripe: null, stripeTest: null, paypal: null })
+  assert.deepEqual(browserKeysFrom({ STRIPE_PUBLISHABLE_KEY: "pk", PAYPAL_CLIENT_ID: "id", STRIPE_API_KEY: "sk" }), { stripe: "pk", stripeTest: null, paypal: "id" })
+  assert.deepEqual(browserKeysFrom({ STRIPE_TEST_PUBLISHABLE_KEY: "pk_test", STRIPE_TEST_API_KEY: "sk_test" }), { stripe: null, stripeTest: "pk_test", paypal: null })
 })
