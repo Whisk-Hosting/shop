@@ -216,9 +216,15 @@ deploy waits until they have):
 
 | Provider | Secrets |
 |---|---|
-| Stripe | `STRIPE_API_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`; its webhook goes to `https://<shop>/hooks/payment/stripe_stripe` |
+| Stripe | `STRIPE_API_KEY`, `STRIPE_PUBLISHABLE_KEY`; the shop makes its own webhook |
 | Windcave | `WINDCAVE_USERNAME`, `WINDCAVE_API_KEY` |
 | PayPal | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` |
+
+Stripe's webhook needs no setting: on start the shop makes its endpoint at
+`https://<shop>/hooks/payment/stripe_stripe`, keeps its signing secret sealed in its own database,
+follows the shop to a new address, and replaces any other endpoint at that address. A restricted
+key needs Webhook Endpoints: Write as well as what payments need. To manage the endpoint yourself,
+set `STRIPE_WEBHOOK_SECRET` and the shop leaves Stripe's endpoints alone.
 
 `*_CAPTURE: manual` in `whisk.yaml` takes payment when an order is sent rather than when it is
 placed; `WINDCAVE_ENVIRONMENT` and `PAYPAL_ENVIRONMENT` other than `live` use their test

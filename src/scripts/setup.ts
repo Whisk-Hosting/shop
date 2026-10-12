@@ -4,7 +4,7 @@
 // new shop gets: the market's currency, with tax included in prices or added on top as the market
 // says; a region with the market's tax; a sales channel and the key the storefront uses; a stock
 // location; standard delivery that staff change in the admin; every payment provider whose keys
-// are set (bank transfer always); and the table the website's forms are kept in.
+// are set (bank transfer always); and the tables for the shop's own secrets and the website's forms.
 import type { ExecArgs } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import {
@@ -140,8 +140,17 @@ export default async function setup({ container }: ExecArgs) {
     logger.info("setup: made the storefront's key")
   }
 
+  // Secrets the shop makes for itself, sealed with its own key: Stripe's webhook signing secret
+  // (src/modules/stripe).
+  const pg = container.resolve(ContainerRegistrationKeys.PG_CONNECTION)
+  await pg.raw(`create table if not exists shop_secrets (
+    name text primary key,
+    value text,
+    updated_at timestamptz not null default now()
+  )`)
+
   // The website's form entries (src/api/middlewares.ts, formPost).
-  await container.resolve(ContainerRegistrationKeys.PG_CONNECTION).raw(`create table if not exists form_entries (
+  await pg.raw(`create table if not exists form_entries (
     id bigint generated always as identity primary key,
     form text not null,
     page text,

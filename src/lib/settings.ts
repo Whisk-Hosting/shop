@@ -61,7 +61,9 @@ export const paymentProvidersFrom = (env: Env, trade = false): PaymentProvider[]
   const out: PaymentProvider[] = trade ? [ACCOUNT_PROVIDER] : []
   if (env["STRIPE_API_KEY"]) {
     out.push({
-      resolve: "@medusajs/medusa/payment-stripe",
+      // Medusa's Stripe provider, which makes its own webhook unless STRIPE_WEBHOOK_SECRET is set
+      // (src/modules/stripe).
+      resolve: "./src/modules/stripe",
       id: "stripe",
       options: {
         apiKey: env["STRIPE_API_KEY"],

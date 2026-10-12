@@ -23,13 +23,16 @@
     "@medusajs/file-s3": "2.21.2",
     "@medusajs/framework": "2.21.2",
     "@medusajs/medusa": "2.21.2",
+    "@medusajs/payment-stripe": "2.21.2",
     "astro": "7.3.8",
-    "ioredis": "5.11.1"
+    "ioredis": "5.11.1",
+    "pg": "8.23.1"
   },
   "devDependencies": {
     "@astrojs/check": "0.9.10",
     "@swc/core": "1.16.13",
     "@types/node": "22.20.5",
+    "@types/pg": "8.23.1",
     "@types/react": "18.3.31",
     "@types/react-dom": "18.3.7",
     "prop-types": "15.8.1",
