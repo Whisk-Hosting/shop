@@ -6,14 +6,15 @@ const LOCALES: Record<string, string> = { nzd: "en-NZ", aud: "en-AU" }
 export const money = (amount: number | null | undefined, currency: string) =>
   amount == null ? "" : new Intl.NumberFormat(LOCALES[currency.toLowerCase()] ?? "en-NZ", { style: "currency", currency: currency.toUpperCase() }).format(amount)
 
-// A picture stored on Whisk is resized by the edge: a set of widths up to twice the one the
+// A picture stored on Whisk is resized by the edge, which answers on every name of the app: a set of widths up to twice the one the
 // layout shows, for the browser to choose from by `sizes` (the shown width unless the page says
 // more). Any other address is used as it is.
 const WIDTHS = [160, 320, 480, 640, 800, 1200, 1600]
 export const picture = (url: string | null | undefined, width: number): { src: string; srcset?: string; sizes?: string } | null => {
   if (!url) return null
   if (!url.includes("/.whisk/img/")) return { src: url }
-  const base = url.split("?")[0]
+  // On the page's own address, whichever of the app's names the picture was stored under.
+  const base = url.slice(url.indexOf("/.whisk/img/")).split("?")[0]
   const widths = [...new Set([...WIDTHS.filter((w) => w < width * 2), width, width * 2])].sort((a, b) => a - b)
   return { src: `${base}?w=${width}&format=auto`, srcset: widths.map((w) => `${base}?w=${w}&format=auto ${w}w`).join(", "), sizes: `${width}px` }
 }

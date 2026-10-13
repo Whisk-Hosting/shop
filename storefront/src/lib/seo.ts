@@ -24,7 +24,24 @@ export const absoluteUrl = (origin: string, u: string | null | undefined): strin
 // A picture to show beside a link: whole, and a picture stored on Whisk as a 1200 px JPEG, which
 // every site that previews links reads.
 export const shareImage = (origin: string, u: string | null | undefined): string | null =>
-  absoluteUrl(origin, u && u.includes("/.whisk/img/") ? `${u.split("?")[0]}?w=1200&format=jpeg` : u)
+  absoluteUrl(origin, u && u.includes("/.whisk/img/") ? `${u.slice(u.indexOf("/.whisk/img/")).split("?")[0]}?w=1200&format=jpeg` : u)
+
+// The first picture in a page's blocks (a hero's, a picture's, a column's), for a page that names
+// none to show beside links.
+export const firstPicture = (value: unknown, depth = 0): string | null => {
+  if (!value || typeof value !== "object" || depth > 6) return null
+  if (Array.isArray(value)) {
+    for (const v of value) {
+      const found = firstPicture(v, depth + 1)
+      if (found) return found
+    }
+    return null
+  }
+  const o = value as Record<string, unknown>
+  const m = o.image as { url?: unknown; mimeType?: unknown } | null | undefined
+  if (m && typeof m === "object" && typeof m.url === "string" && !/^video\//.test(String(m.mimeType ?? ""))) return m.url
+  return firstPicture(Object.values(o).filter((v) => v && typeof v === "object"), depth + 1)
+}
 
 // A price with the market's tax in it, as search engines show prices to shoppers.
 export const withTax = (amount: number, market: Market): number =>

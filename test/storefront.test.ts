@@ -7,8 +7,8 @@ import { passwordProblem, registerProblem } from "../storefront/src/lib/account"
 test("money and pictures", () => {
   assert.equal(money(45, "nzd"), "$45.00")
   assert.equal(money(null, "nzd"), "")
-  const img = "https://k.whisk.page/.whisk/img/01J"
-  assert.deepEqual(picture(`${img}?w=1`, 300), {
+  const img = "/.whisk/img/01J"
+  assert.deepEqual(picture(`https://k.whisk.page${img}?w=1`, 300), {
     src: `${img}?w=300&format=auto`,
     srcset: [160, 300, 320, 480, 600].map((w) => `${img}?w=${w}&format=auto ${w}w`).join(", "),
     sizes: "300px",

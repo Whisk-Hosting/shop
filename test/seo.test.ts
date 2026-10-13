@@ -1,7 +1,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import { shopAddress } from "../src/lib/routes"
-import { absoluteUrl, breadcrumbLd, canonicalUrl, productLd, shareImage, siteLd, withTax } from "../storefront/src/lib/seo"
+import { absoluteUrl, breadcrumbLd, canonicalUrl, firstPicture, productLd, shareImage, siteLd, withTax } from "../storefront/src/lib/seo"
 
 test("each shop page has one address", () => {
   const cases: [string, string | null][] = [
@@ -39,6 +39,7 @@ test("pictures beside links are whole addresses, stored ones as 1200 px JPEGs", 
   assert.equal(absoluteUrl(o, null), null)
   assert.equal(shareImage(o, "/.whisk/img/01J?w=300&format=auto"), "https://shop.example.com/.whisk/img/01J?w=1200&format=jpeg")
   assert.equal(shareImage(o, "https://shop.example.com/.whisk/img/01J"), "https://shop.example.com/.whisk/img/01J?w=1200&format=jpeg")
+  assert.equal(shareImage(o, "https://acme.whisk.page/.whisk/img/01J"), "https://shop.example.com/.whisk/img/01J?w=1200&format=jpeg")
   assert.equal(shareImage(o, undefined), null)
 })
 
@@ -81,4 +82,16 @@ test("the business, the site and the trail to a page", () => {
   assert.equal(site.url, "https://shop.example.com/")
   const trail = breadcrumbLd("https://shop.example.com", [{ name: "Acme Supply", path: "/" }, { name: "Gloves", path: "/categories/gloves" }])
   assert.deepEqual(trail.itemListElement[1], { "@type": "ListItem", position: 2, name: "Gloves", item: "https://shop.example.com/categories/gloves" })
+})
+
+test("the first picture on a page, for a page that names none", () => {
+  const layout = [
+    { blockType: "content", text: "Hello" },
+    { blockType: "media", image: { url: "/.whisk/media/V", mimeType: "video/mp4" } },
+    { blockType: "columns", items: [{ heading: "One" }, { image: { url: "/.whisk/img/COL", mimeType: "image/png" } }] },
+    { blockType: "hero", image: { url: "/.whisk/img/HERO" } },
+  ]
+  assert.equal(firstPicture(layout), "/.whisk/img/COL")
+  assert.equal(firstPicture([{ blockType: "hero", image: 12 }]), null)
+  assert.equal(firstPicture(null), null)
 })

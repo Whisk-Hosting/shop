@@ -5,7 +5,7 @@ import { product as getProduct } from "../../lib/store"
 import { fromPrice, money, picture, variantFor } from "../../lib/format"
 import Blocks from "../../blocks/Blocks.astro"
 import { productPage, reader } from "../../lib/cms"
-import { inStock, productLd } from "../../lib/seo"
+import { inStock, productLd, withTax } from "../../lib/seo"
 
 // One page per product: its price, options and stock from the shop (Medusa), read live, and its
 // story from the CMS's product page of the same handle, when it has one.
@@ -54,6 +54,9 @@ const breadcrumbs = [
           {price.calculated_amount < price.original_amount && <s>{money(price.original_amount, price.currency_code)}</s>}
         </p>
       ) : range && <p class="price">From {money(range.amount, range.currency)}</p>}
+      {price && !shop.market.taxInclusive && (
+        <p class="muted price-inc">{money(withTax(price.calculated_amount, shop.market), price.currency_code)} including {shop.market.taxName}</p>
+      )}
 
       {variants.length > 1 && options.length > 0 && (
         <form method="get" id="options">

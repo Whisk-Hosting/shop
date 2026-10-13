@@ -5,9 +5,10 @@ import "../styles/shop.css"
 import { api } from "../lib/medusa"
 import { cart as getCart, categories as getCategories } from "../lib/store"
 import { menus as getMenus, page as getPage, PREVIEW_SCRIPT, reader } from "../lib/cms"
-import { breadcrumbLd, canonicalUrl, shareImage, siteLd, type Crumb } from "../lib/seo"
+import { breadcrumbLd, canonicalUrl, firstPicture, shareImage, siteLd, type Crumb } from "../lib/seo"
 
-// image: the picture beside a link to the page, else the home page's (set in the CMS). ld: the
+// image: the picture beside a link to the page, else the home page's (set in the CMS), else the
+// first picture on the home page. ld: the
 // page's own structured data; breadcrumbs: the trail to it after the home page.
 type Props = {
   title?: string
@@ -37,7 +38,7 @@ const top = cats.filter((c: any) => !c.parent_category_id).sort((x: any, y: any)
 const fullTitle = given ?? (title ? `${title} | ${shop.name}` : shop.name)
 const origin = Astro.url.origin
 const url = canonical ?? canonicalUrl(Astro.url)
-const picture = shareImage(origin, image ?? (typeof home?.image === "object" ? home?.image?.url : null))
+const picture = shareImage(origin, image ?? (typeof home?.image === "object" ? home?.image?.url : null) ?? firstPicture(home?.layout))
 const data = [
   ...(Astro.url.pathname === "/" ? siteLd(origin, shop.name) : []),
   ...(breadcrumbs?.length ? [breadcrumbLd(origin, [{ name: shop.name, path: "/" }, ...breadcrumbs])] : []),
