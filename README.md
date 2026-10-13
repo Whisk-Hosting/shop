@@ -136,7 +136,10 @@ Payload's editor inside the admin. A page is a list of blocks (hero, text, pictu
 products, form, HTML) at an address; drafts are seen only by the team, in a preview that follows
 the edit. A product's page at `/products/<handle>` shows its live price, options and stock from
 Medusa, then the blocks of the product page with the same handle. A form block posts to
-`/forms/<name>`, kept in the database's `form_entries` table.
+`/forms/<name>`, kept in the database's `form_entries` table. A coding agent edits the pages
+through Payload's API at `/cms/api` on the shop's address, with its Whisk credential
+(`Authorization: Bearer $WHISK_TOKEN`), as the person it works for; each version of a page
+records who made it, as "Claude for Jane Doe" for an agent's change.
 
 The shop's pages are at `/products` (the product list; `/shop` is sent there), `/categories`,
 `/collections`, `/cart`, `/checkout`, `/account`, `/order` and `/search`, each without a last
