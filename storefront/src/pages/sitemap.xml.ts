@@ -1,4 +1,4 @@
-// GET /sitemap.xml: the website's pages (from the CMS), the shop's home, every category and collection, and every
+// GET /sitemap.xml: the website's pages (from the CMS), the product list, every category and collection, and every
 // product, read a page at a time so a large catalogue is not held at once.
 import type { APIRoute } from "astro"
 import { api, query } from "../lib/medusa"
@@ -26,11 +26,10 @@ export const GET: APIRoute = async ({ request, locals, url }) => {
     all("/store/collections", "collections", "handle,updated_at"),
   ])
   const entries = [
-    // Until the website has a home page, the shop's home is the address's home, so / stands for
-    // /shop.
+    // Until the website has a home page, the shop's list is the address's home too.
     ...(site.some((p) => p.path === "/") ? [] : [{ path: "/" }]),
     ...site.map((p) => ({ path: p.path, updated: p.updatedAt })),
-    ...(site.some((p) => p.path === "/") ? [{ path: "/shop" }] : []),
+    { path: "/products", updated: products.reduce<string | null>((a, p) => (p.updated_at && (!a || p.updated_at > a) ? p.updated_at : a), null) },
     ...cats.map((c) => ({ path: `/categories/${c.handle}`, updated: c.updated_at })),
     ...cols.map((c) => ({ path: `/collections/${c.handle}`, updated: c.updated_at })),
     ...products.map((p) => ({ path: `/products/${p.handle}`, updated: p.updated_at })),

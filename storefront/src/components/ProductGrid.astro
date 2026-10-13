@@ -11,7 +11,7 @@ const at = (p: number) => {
 }
 ---
 {products.length === 0 ? <p class="muted">{empty}</p> : (
-  <ul class="grid">{products.map((p) => <ProductCard product={p} />)}</ul>
+  <ul class="grid">{products.map((p, i) => <ProductCard product={p} eager={i < 4} first={i === 0} />)}</ul>
 )}
 {pages > 1 && (
   <nav class="pager" aria-label="Pages">

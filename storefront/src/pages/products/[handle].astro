@@ -5,6 +5,7 @@ import { product as getProduct } from "../../lib/store"
 import { fromPrice, money, picture, variantFor } from "../../lib/format"
 import Blocks from "../../blocks/Blocks.astro"
 import { productPage, reader } from "../../lib/cms"
+import { inStock, productLd } from "../../lib/seo"
 
 // One page per product: its price, options and stock from the shop (Medusa), read live, and its
 // story from the CMS's product page of the same handle, when it has one.
@@ -25,35 +26,24 @@ const chosen: Record<string, string> = Object.fromEntries(
 const variant = variants.length === 1 ? variants[0] : variantFor(variants, chosen)
 const price = variant?.calculated_price
 const range = fromPrice(variants)
-const inStock = (v: any) => !v.manage_inventory || v.allow_backorder || Number(v.inventory_quantity ?? 0) > 0
 const available = variant ? inStock(variant) : false
 const images: any[] = p.images?.length ? p.images : p.thumbnail ? [{ url: p.thumbnail }] : []
 const added = Astro.url.searchParams.get("added") === "1"
 const failed = Astro.url.searchParams.get("error")
 const description = (p.subtitle || p.description || "").slice(0, 160)
-const ld = {
-  "@context": "https://schema.org",
-  "@type": "Product",
-  name: p.title,
-  description: p.description ?? undefined,
-  image: images.map((i) => i.url),
-  sku: variant?.sku ?? undefined,
-  offers: variants.filter((v) => v.calculated_price).map((v) => ({
-    "@type": "Offer",
-    price: v.calculated_price.calculated_amount,
-    priceCurrency: v.calculated_price.currency_code.toUpperCase(),
-    availability: inStock(v) ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
-    sku: v.sku ?? undefined,
-  })),
-}
+const ld = productLd(p, { origin: Astro.url.origin, shop: shop.name, market: shop.market, sku: variant?.sku })
+const category = (p.categories ?? [])[0]
+const breadcrumbs = [
+  ...(category ? [{ name: category.name, path: `/categories/${category.handle}` }] : [{ name: "Products", path: "/products" }]),
+  { name: p.title, path: `/products/${p.handle}` },
+]
 ---
-<Shop title={p.title} description={description} image={images[0]?.url} noindex={r.preview} preview={r.preview}>
-  <script slot="head" type="application/ld+json" set:html={JSON.stringify(ld)} />
+<Shop title={p.title} description={description} image={images[0]?.url} noindex={r.preview} preview={r.preview} type="product" ld={[ld]} breadcrumbs={breadcrumbs}>
   <div class="product">
     <div class="gallery">
       {images.map((img, i) => {
         const pic = picture(img.url, 800)
-        return pic && <img src={pic.src} srcset={pic.srcset} alt={i === 0 ? p.title : ""} width="800" height="800" loading={i === 0 ? "eager" : "lazy"} fetchpriority={i === 0 ? "high" : "auto"} />
+        return pic && <img src={pic.src} srcset={pic.srcset} sizes="(min-width: 720px) 60vw, 100vw" alt={i === 0 ? p.title : ""} width="800" height="800" loading={i === 0 ? "eager" : "lazy"} fetchpriority={i === 0 ? "high" : "auto"} />
       })}
     </div>
     <div>

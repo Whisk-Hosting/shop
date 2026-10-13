@@ -60,8 +60,28 @@ export const staticFile = (root: string, urlPath: string): { file: string; type:
   const ext = /\.[a-z0-9]+$/i.exec(decoded)?.[0].toLowerCase()
   const type = ext ? TYPES[ext] : undefined
   if (!type) return null
-  const cache = decoded.startsWith("/_astro/") ? "public, max-age=31536000, immutable" : "public, max-age=3600"
-  return { file: root.replace(/\/$/, "") + decoded, type, cache }
+  return { file: root.replace(/\/$/, "") + decoded, type, cache: cacheFor(decoded, type) }
+}
+
+// How long a built file may be kept: /_astro's for a year, since a new build names them anew;
+// pictures, fonts, documents and media for a day, then used while fetched again for a week, since
+// they are rarely replaced under the same name; scripts, styles and the rest for an hour, since
+// they change with the pages that use them.
+const cacheFor = (path: string, type: string) =>
+  path.startsWith("/_astro/")
+    ? "public, max-age=31536000, immutable"
+    : /^(image|font|video|audio)\/|^application\/pdf/.test(type)
+      ? "public, max-age=86400, stale-while-revalidate=604800"
+      : "public, max-age=3600, stale-while-revalidate=86400"
+
+// The shop's pages each have one address: without a last slash, and the product list at /products
+// (/shop, its other address, is sent there). The website's pages keep the address each was given.
+const SHOP_PAGES = /^\/(products|categories|collections|search|cart|checkout|account|order)(\/[^/]|$)/
+export const shopAddress = (path: string): string | null => {
+  if (path === "/shop" || path === "/shop/") return "/products"
+  if (path === "/" || !path.endsWith("/")) return null
+  const trimmed = path.replace(/\/+$/, "")
+  return SHOP_PAGES.test(trimmed) && !trimmed.includes("//") ? trimmed : null
 }
 
 // A moved website's old addresses (redirects.json, written by the mover): each answers with one

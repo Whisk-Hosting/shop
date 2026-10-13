@@ -7,10 +7,13 @@ import { passwordProblem, registerProblem } from "../storefront/src/lib/account"
 test("money and pictures", () => {
   assert.equal(money(45, "nzd"), "$45.00")
   assert.equal(money(null, "nzd"), "")
-  assert.deepEqual(picture("https://k.whisk.page/.whisk/img/01J?w=1", 300), {
-    src: "https://k.whisk.page/.whisk/img/01J?w=300&format=auto",
-    srcset: "https://k.whisk.page/.whisk/img/01J?w=300&format=auto 1x, https://k.whisk.page/.whisk/img/01J?w=600&format=auto 2x",
+  const img = "https://k.whisk.page/.whisk/img/01J"
+  assert.deepEqual(picture(`${img}?w=1`, 300), {
+    src: `${img}?w=300&format=auto`,
+    srcset: [160, 300, 320, 480, 600].map((w) => `${img}?w=${w}&format=auto ${w}w`).join(", "),
+    sizes: "300px",
   })
+  assert.equal(picture(img, 72)!.srcset, `${img}?w=72&format=auto 72w, ${img}?w=144&format=auto 144w`)
   assert.deepEqual(picture("https://elsewhere/a.png", 300), { src: "https://elsewhere/a.png" })
   assert.equal(picture(null, 300), null)
 })
@@ -72,7 +75,7 @@ test("the sitemap lists each page with its date, escaped", () => {
 })
 
 test("robots.txt keeps the website's lines first, then the shop's", () => {
-  const shop = "User-agent: *\nDisallow: /cart\nDisallow: /checkout\nDisallow: /account\nDisallow: /order/\nDisallow: /app\nDisallow: /cms\n\nSitemap: https://shop.example.com/sitemap.xml\n"
+  const shop = "User-agent: *\nAllow: /.whisk/\nDisallow: /cart\nDisallow: /checkout\nDisallow: /account\nDisallow: /order/\nDisallow: /app\nDisallow: /cms\n\nSitemap: https://shop.example.com/sitemap.xml\n"
   assert.equal(robotsTxt("https://shop.example.com", undefined), shop)
   assert.equal(robotsTxt("https://shop.example.com", "  \n"), shop)
   assert.equal(robotsTxt("https://shop.example.com", "User-agent: *\nDisallow: /wp-admin/\n\n"), "User-agent: *\nDisallow: /wp-admin/\n\n# The shop\n" + shop)

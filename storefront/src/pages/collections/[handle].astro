@@ -12,7 +12,7 @@ const page = Math.max(1, Number(Astro.url.searchParams.get("page")) || 1)
 const perPage = 24
 const { products: list, count } = await products(a, shop, { collection: collection.id, limit: perPage, offset: (page - 1) * perPage })
 ---
-<Shop title={collection.title} description={`${collection.title} at ${shop.name}.`}>
+<Shop title={collection.title} description={`${collection.title} at ${shop.name}.`} breadcrumbs={[{ name: collection.title, path: `/collections/${collection.handle}` }]}>
   <h1>{collection.title}</h1>
   <ProductGrid products={list} count={count} page={page} perPage={perPage} base={Astro.url.pathname + Astro.url.search} />
 </Shop>

@@ -24,6 +24,6 @@ const list = await (async () => {
 {list.length > 0 && (
   <section class="block products">
     {b.heading && <h2>{b.heading}</h2>}
-    <ul class="grid">{list.map((p: any) => <ProductCard product={p} />)}</ul>
+    <ul class="grid">{list.map((p: any) => <ProductCard product={p} level={b.heading ? 3 : 2} />)}</ul>
   </section>
 )}

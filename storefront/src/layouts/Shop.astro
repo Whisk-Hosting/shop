@@ -4,21 +4,45 @@
 import "../styles/shop.css"
 import { api } from "../lib/medusa"
 import { cart as getCart, categories as getCategories } from "../lib/store"
-import { menus as getMenus, PREVIEW_SCRIPT, reader } from "../lib/cms"
+import { menus as getMenus, page as getPage, PREVIEW_SCRIPT, reader } from "../lib/cms"
+import { breadcrumbLd, canonicalUrl, shareImage, siteLd, type Crumb } from "../lib/seo"
 
-type Props = { title?: string; fullTitle?: string; description?: string; canonical?: string; noindex?: boolean; image?: string; head?: string; preview?: boolean }
-const { title, fullTitle: given, description, canonical, noindex, image, head, preview } = Astro.props
+// image: the picture beside a link to the page, else the home page's (set in the CMS). ld: the
+// page's own structured data; breadcrumbs: the trail to it after the home page.
+type Props = {
+  title?: string
+  fullTitle?: string
+  description?: string
+  canonical?: string
+  noindex?: boolean
+  image?: string
+  head?: string
+  preview?: boolean
+  type?: "website" | "product"
+  ld?: object[]
+  breadcrumbs?: Crumb[]
+}
+const { title, fullTitle: given, description, canonical, noindex, image, head, preview, type = "website", ld = [], breadcrumbs } = Astro.props
 const shop = Astro.locals.shop
 const a = api(shop, Astro.request)
-const [cart, cats, menus] = await Promise.all([
+const r = reader(shop.cms, Astro.request)
+const [cart, cats, menus, home] = await Promise.all([
   getCart(a, Astro.cookies).catch(() => null),
   getCategories(a).catch(() => []),
-  getMenus(reader(shop.cms, Astro.request)),
+  getMenus(r),
+  image ? null : getPage(r, "/").catch(() => null),
 ])
 const count = (cart?.items ?? []).reduce((n: number, i: any) => n + Number(i.quantity), 0)
 const top = cats.filter((c: any) => !c.parent_category_id).sort((x: any, y: any) => (x.rank ?? 0) - (y.rank ?? 0)).slice(0, 12)
 const fullTitle = given ?? (title ? `${title} | ${shop.name}` : shop.name)
-const url = canonical ?? new URL(Astro.url.pathname, Astro.url).toString()
+const origin = Astro.url.origin
+const url = canonical ?? canonicalUrl(Astro.url)
+const picture = shareImage(origin, image ?? (typeof home?.image === "object" ? home?.image?.url : null))
+const data = [
+  ...(Astro.url.pathname === "/" ? siteLd(origin, shop.name) : []),
+  ...(breadcrumbs?.length ? [breadcrumbLd(origin, [{ name: shop.name, path: "/" }, ...breadcrumbs])] : []),
+  ...ld,
+]
 const q = Astro.url.searchParams.get("q") ?? ""
 ---
 <!doctype html>
@@ -30,11 +54,14 @@ const q = Astro.url.searchParams.get("q") ?? ""
     {description && <meta name="description" content={description} />}
     <link rel="canonical" href={url} />
     {noindex && <meta name="robots" content="noindex" />}
+    <meta property="og:type" content={type} />
     <meta property="og:title" content={fullTitle} />
     <meta property="og:site_name" content={shop.name} />
     <meta property="og:url" content={url} />
     {description && <meta property="og:description" content={description} />}
-    {image && <meta property="og:image" content={image} />}
+    {picture && <meta property="og:image" content={picture} />}
+    <meta name="twitter:card" content={picture ? "summary_large_image" : "summary"} />
+    {data.map((d) => <script type="application/ld+json" set:html={JSON.stringify(d).replace(/</g, "\\u003c")} />)}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     {head && <Fragment set:html={head} />}
     <slot name="head" />
@@ -56,7 +83,7 @@ const q = Astro.url.searchParams.get("q") ?? ""
           </nav>
         )}
         <nav aria-label="Account and cart">
-          <a href="/shop">Shop</a>
+          <a href="/products">Shop</a>
           <a href="/account">Account</a>
           <a class="cart-link" href="/cart">Cart {count > 0 && <span class="count" aria-label={`${count} items`}>{count}</span>}</a>
         </nav>

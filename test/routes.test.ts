@@ -66,7 +66,9 @@ test("password routes are limited, sign-up and reset more tightly", () => {
 
 test("staticFile serves built files and nothing outside them", () => {
   assert.deepEqual(staticFile("/srv/client", "/_astro/shop.a1b2.css"), { file: "/srv/client/_astro/shop.a1b2.css", type: "text/css; charset=utf-8", cache: "public, max-age=31536000, immutable" })
-  assert.deepEqual(staticFile("/srv/client/", "/favicon.svg"), { file: "/srv/client/favicon.svg", type: "image/svg+xml", cache: "public, max-age=3600" })
+  assert.deepEqual(staticFile("/srv/client/", "/favicon.svg"), { file: "/srv/client/favicon.svg", type: "image/svg+xml", cache: "public, max-age=86400, stale-while-revalidate=604800" })
+  assert.equal(staticFile("/srv/client", "/whisk-forms.js")!.cache, "public, max-age=3600, stale-while-revalidate=86400")
+  assert.equal(staticFile("/srv/client", "/fonts/a.woff2")!.cache, "public, max-age=86400, stale-while-revalidate=604800")
   const refused = ["/", "/products/beanie", "/../etc/passwd.txt", "/_astro/%2e%2e/x.js", "/.env", "/a/.git/config.json", "/x.php", "/bad%E0%A4%A.js", "/a%00.js"]
   for (const p of refused) assert.equal(staticFile("/srv/client", p), null, p)
 })

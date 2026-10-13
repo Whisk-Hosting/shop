@@ -1,14 +1,17 @@
 ---
 import { fromPrice, money, picture } from "../lib/format"
-type Props = { product: any }
-const { product } = Astro.props
+// level: the card's heading, a step below the heading it sits under. eager: a card at the top of
+// the page, whose picture loads at once (the first one before anything else).
+type Props = { product: any; level?: 2 | 3; eager?: boolean; first?: boolean }
+const { product, level = 2, eager = false, first = false } = Astro.props
+const Heading = level === 3 ? "h3" : "h2"
 const price = fromPrice(product.variants)
 const pic = picture(product.thumbnail, 400)
 ---
 <li class="card">
   <a href={`/products/${product.handle}`}>
-    <div class="pic">{pic && <img src={pic.src} srcset={pic.srcset} alt="" loading="lazy" width="400" height="400" />}</div>
-    <h3>{product.title}</h3>
+    <div class="pic">{pic && <img src={pic.src} srcset={pic.srcset} sizes="(min-width: 1024px) 25vw, (min-width: 720px) 33vw, 50vw" alt="" loading={eager ? "eager" : "lazy"} fetchpriority={first ? "high" : "auto"} width="400" height="400" />}</div>
+    <Heading>{product.title}</Heading>
     {price && (
       <span class={price.sale ? "price sale" : "price"}>
         {price.varies ? "From " : ""}{money(price.amount, price.currency)}

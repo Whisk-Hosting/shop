@@ -12,7 +12,7 @@ import { pathToFileURL } from "node:url"
 import { kv } from "../lib/kv"
 import { isStaff, personFrom, sessionHolds } from "../lib/staff"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
-import { anyFilled, CMS, formFields, formName, formReturn, isMedusaPath, limitFor, redirectFor, staticFile, STOREFRONT, type Redirect } from "../lib/routes"
+import { anyFilled, CMS, formFields, formName, formReturn, isMedusaPath, limitFor, redirectFor, shopAddress, staticFile, STOREFRONT, type Redirect } from "../lib/routes"
 import { storefrontContext } from "../lib/shop"
 import { insideAdmin, isEditorPage, proxy, startCms } from "../lib/cms"
 
@@ -87,10 +87,13 @@ const oldAddresses = (): Redirect[] =>
     }
   })())
 
+// Then a shop page asked for at its other address (src/lib/routes.ts, shopAddress) is sent to its
+// own, so each page is listed once.
 const sendRedirect = (req: MedusaRequest, res: MedusaResponse, pathname: string): boolean => {
   if (req.method !== "GET" && req.method !== "HEAD") return false
   const search = req.originalUrl.includes("?") ? req.originalUrl.slice(req.originalUrl.indexOf("?")) : ""
-  const moved = redirectFor(oldAddresses(), pathname, search)
+  const own = shopAddress(pathname)
+  const moved = redirectFor(oldAddresses(), pathname, search) ?? (own ? { status: 301, location: own + search } : null)
   if (!moved) return false
   res.status(moved.status).set({ "cache-control": "public, max-age=300", ...(moved.location ? { location: moved.location } : { "content-type": "text/plain; charset=utf-8" }) })
   res.end(moved.location ? undefined : "This page has been removed.")

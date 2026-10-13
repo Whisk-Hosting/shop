@@ -6,7 +6,7 @@ export const CART_COOKIE = "shop_cart"
 
 type Api = ReturnType<typeof api>
 
-const PRODUCT_FIELDS = "*variants.calculated_price,+variants.inventory_quantity,*variants.options,*options,*options.values,*images,*categories"
+const PRODUCT_FIELDS = "+metadata,*variants.calculated_price,+variants.inventory_quantity,*variants.options,*options,*options.values,*images,*categories"
 const CARD_FIELDS = "id,handle,title,thumbnail,*variants.calculated_price"
 const CART_FIELDS = "*items,*items.variant,*items.variant.product,*shipping_methods,*shipping_address,*billing_address,*payment_collection,*payment_collection.payment_sessions,*promotions,+item_subtotal,+shipping_subtotal,+items.subtotal"
 

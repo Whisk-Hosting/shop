@@ -138,10 +138,11 @@ the edit. A product's page at `/products/<handle>` shows its live price, options
 Medusa, then the blocks of the product page with the same handle. A form block posts to
 `/forms/<name>`, kept in the database's `form_entries` table.
 
-The shop's pages are at `/shop` (its home), `/products`, `/categories`, `/collections`, `/cart`,
-`/checkout`, `/account`, `/order` and `/search`; every other address is the website's, with one
-`sitemap.xml` and `robots.txt` for both. `/` is the website's page at `/`, or the shop's home
-until there is one. Old addresses go in `redirects.json` (`{"from": "/old", "to": "/new"}`, or
+The shop's pages are at `/products` (the product list; `/shop` is sent there), `/categories`,
+`/collections`, `/cart`, `/checkout`, `/account`, `/order` and `/search`, each without a last
+slash; every other address is the website's, with one `sitemap.xml` and `robots.txt` for both.
+`/` is the website's page at `/`, or the product list until there is one. A product's `brand` in
+its metadata names its brand to search engines (the shop's name otherwise). Old addresses go in `redirects.json` (`{"from": "/old", "to": "/new"}`, or
 `"status": 410` for a page that is gone). Starting content goes in `cms/content/` and is added
 once, never over an edit (`cms/src/content.ts` says how).
 

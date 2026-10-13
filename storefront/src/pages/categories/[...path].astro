@@ -13,7 +13,7 @@ const page = Math.max(1, Number(Astro.url.searchParams.get("page")) || 1)
 const perPage = 24
 const { products: list, count } = await products(a, shop, { category: category.id, limit: perPage, offset: (page - 1) * perPage })
 ---
-<Shop title={category.name} description={category.description || `${category.name} at ${shop.name}.`}>
+<Shop title={category.name} description={category.description || `${category.name} at ${shop.name}.`} breadcrumbs={[{ name: category.name, path: `/categories/${category.handle}` }]}>
   <h1>{category.name}</h1>
   {category.description && <p class="muted">{category.description}</p>}
   {(category.category_children ?? []).length > 0 && (
