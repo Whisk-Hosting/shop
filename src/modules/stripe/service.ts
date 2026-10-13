@@ -23,6 +23,8 @@ type Logger = { info: (msg: string) => void; warn: (msg: string) => void; error:
 
 const STRIPE = "https://api.stripe.com/v1"
 const RETRY_MS = 60_000
+// Deadlines on the shop's own queries are pg's query_timeout, kept by the client: a pooler in front
+// of the database may refuse statement_timeout as a startup parameter.
 
 const stripe = async <T>(base: string, apiKey: string, method: "GET" | "POST" | "DELETE", path: string, body?: string): Promise<T> => {
   const res = await fetch(base + path, {
@@ -49,7 +51,7 @@ export const ensureWebhook = async (env: Record<string, string | undefined>, api
   const name = secretName(apiKey)
   const db = databaseFrom(env.DATABASE_URL!)
   const ssl = (db.driverOptions.connection as { ssl: unknown }).ssl
-  const pool = new Pool({ connectionString: db.url, ssl: ssl as never, max: 1, connectionTimeoutMillis: 10_000, statement_timeout: 30_000 })
+  const pool = new Pool({ connectionString: db.url, ssl: ssl as never, max: 1, connectionTimeoutMillis: 10_000, query_timeout: 30_000 })
   const client = await pool.connect()
   try {
     await client.query("begin")
@@ -99,7 +101,7 @@ const currentMode = async (pairs: Pairs, logger: Logger): Promise<Which> => {
     if (!modePool) {
       const db = databaseFrom(process.env.DATABASE_URL ?? "")
       const ssl = (db.driverOptions.connection as { ssl: unknown }).ssl
-      modePool = new Pool({ connectionString: db.url, ssl: ssl as never, max: 1, connectionTimeoutMillis: 5_000, statement_timeout: 5_000, idleTimeoutMillis: 30_000 })
+      modePool = new Pool({ connectionString: db.url, ssl: ssl as never, max: 1, connectionTimeoutMillis: 5_000, query_timeout: 5_000, idleTimeoutMillis: 30_000 })
     }
     const r = await modePool.query<{ metadata: Record<string, unknown> | null }>("select metadata from store where deleted_at is null order by created_at limit 1")
     mode = { which: modeFrom(r.rows[0]?.metadata, pairs), at: Date.now() }
