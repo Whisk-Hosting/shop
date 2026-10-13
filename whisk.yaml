@@ -34,3 +34,5 @@ env:
   PAYPAL_ENVIRONMENT: live
   PAYPAL_CAPTURE: automatic
   SHOP_EMAIL_FROM: ""
+  # Where each new order is emailed, comma separated; empty sends none (src/lib/notify.ts).
+  SHOP_ORDERS_TO: ""
