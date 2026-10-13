@@ -1,6 +1,6 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { adminSection, forwardHeaders, insideAdmin, isEditorPage, restartDelay } from "../src/lib/cms"
+import { adminSection, editorFor, editPath, editQuery, forwardHeaders, insideAdmin, isEditLink, isEditorPage, restartDelay } from "../src/lib/cms"
 import { otherForm, reader } from "../storefront/src/lib/cms"
 
 test("the editor's pages are the team's, its API anyone's", () => {
@@ -44,4 +44,25 @@ test("a preview is the team's only", () => {
   assert.equal(reader("http://cms", req("https://shop.example.com/a?preview=1")).preview, false)
   assert.equal(reader("http://cms", req("https://shop.example.com/a?preview=1", { ...team, "x-whisk-roles": "guest" })).preview, false)
   assert.equal(reader("http://cms", req("https://shop.example.com/a?preview=1", { ...team, "x-whisk-audience": "customer" })).preview, false)
+})
+
+test("the Whisk bar's Edit page opens the editor, inside the admin, at what the path shows", () => {
+  assert.equal(isEditLink("/cms/edit"), true)
+  assert.equal(isEditLink("/cms/edits"), false)
+  for (const [search, want] of [["?path=%2Fabout%2F", "/about/"], ["", "/"], ["?path=about", "/"], ["?path=%2F%2Fevil.example", "/"]] as const)
+    assert.equal(editPath(search), want, search)
+
+  const wheres = (q: URLSearchParams) => [...q.entries()].filter(([k]) => k.startsWith("where")).map(([k, v]) => `${k}=${v}`)
+  const page = editQuery("/about")
+  assert.equal(page.collection, "pages")
+  assert.deepEqual(wheres(page.query), ["where[or][0][path][equals]=/about", "where[or][1][path][equals]=/about/"])
+  assert.equal(page.query.get("draft"), "true")
+  const product = editQuery("/products/blue%20mug")
+  assert.equal(product.collection, "product-pages")
+  assert.deepEqual(wheres(product.query), ["where[handle][equals]=blue mug"])
+
+  assert.equal(editorFor("pages", { id: 7 }), insideAdmin("/cms/collections/pages/7"))
+  assert.equal(editorFor("product-pages", { id: "abc" }), insideAdmin("/cms/collections/product-pages/abc"))
+  assert.equal(editorFor("pages", null), insideAdmin("/cms/collections/pages"))
+  assert.equal(editorFor("product-pages", null), "/app/product-pages?to=%2Fcms%2Fcollections%2Fproduct-pages")
 })

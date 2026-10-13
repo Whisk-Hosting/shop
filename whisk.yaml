@@ -8,6 +8,12 @@ routes:
   public: ["/**"]
   challenge: ["/forms/*"]
 
+# The business's own admin, which the Whisk bar links for its team: the shop's admin, and the
+# site editor opened at the page being looked at (src/api/middlewares.ts).
+admin:
+  path: /app
+  edit: "/cms/edit?path={path}"
+
 health:
   path: /health/ready
   timeout: 60

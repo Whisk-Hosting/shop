@@ -107,3 +107,54 @@ export const proxy = (req: http.IncomingMessage, res: http.ServerResponse, url: 
     })
     req.pipe(out)
   })
+
+// The page editor's address (whisk.yaml's admin.edit, CONTRACT.md §3.1): /cms/edit?path=<a
+// page's path>, which the Whisk bar's Edit page links to. The editor opens, inside the admin, at
+// what that path shows: a product's own page for /products/<handle>, else the website's page with
+// that path, in either form of the address and as written or decoded; or at the list when there is
+// none yet. These say which path was asked for (the home page when it is not one), what to ask the
+// editor's API for, and where the admin opens for what it found.
+export const isEditLink = (pathname: string) => pathname === "/cms/edit"
+export const editPath = (search: string) => {
+  const p = new URLSearchParams(search).get("path") ?? ""
+  return p.startsWith("/") && !p.startsWith("//") && p.length <= 2000 && !/[\s#?\\]/.test(p) ? p : "/"
+}
+export const editQuery = (path: string): { collection: "pages" | "product-pages"; query: URLSearchParams } => {
+  const q = new URLSearchParams({ depth: "0", limit: "1", draft: "true" })
+  const product = /^\/products\/([^/]+)\/?$/.exec(path)
+  if (product) {
+    q.set("where[handle][equals]", decodeOr(product[1]))
+    return { collection: "product-pages", query: q }
+  }
+  const forms = (p: string) => (p === "/" ? [p] : [p, p.endsWith("/") ? p.slice(0, -1) : `${p}/`])
+  const paths = [...new Set([...forms(path), ...forms(decodeOr(path))])]
+  paths.forEach((p, i) => q.set(`where[or][${i}][path][equals]`, p))
+  return { collection: "pages", query: q }
+}
+const decodeOr = (s: string) => {
+  try {
+    return decodeURIComponent(s)
+  } catch {
+    return s
+  }
+}
+export const editorFor = (collection: string, found: { id?: unknown } | null) =>
+  insideAdmin(found && (typeof found.id === "string" || typeof found.id === "number") ? `/cms/collections/${collection}/${encodeURIComponent(String(found.id))}` : `/cms/collections/${collection}`)
+
+// The identity headers passed to the editor's API when the server asks it for itself, so it shows
+// drafts to the team only (cms/src/access.ts).
+const IDENTITY = ["x-whisk-user-id", "x-whisk-email", "x-whisk-name", "x-whisk-audience", "x-whisk-roles"]
+
+// findForEdit is the document, published or draft, that /cms/edit opens, asked of the editor's API
+// as the person here; null when there is none or the editor cannot answer.
+export const findForEdit = async (h: http.IncomingHttpHeaders, collection: string, query: URLSearchParams) => {
+  const headers = Object.fromEntries(IDENTITY.filter((k) => typeof h[k] === "string").map((k) => [k, h[k] as string]))
+  try {
+    const res = await fetch(`${cmsAddress()}/cms/api/${collection}?${query}`, { headers: { accept: "application/json", ...headers }, signal: AbortSignal.timeout(5_000) })
+    if (!res.ok) return null
+    const body = (await res.json()) as { docs?: { id?: unknown }[] }
+    return body?.docs?.[0] ?? null
+  } catch {
+    return null
+  }
+}

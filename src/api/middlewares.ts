@@ -2,7 +2,8 @@
 // - the admin API is for the business's Whisk team only, signed in through Whisk (/auth/whisk);
 // - password sign-ins are rate-limited, since Medusa does not limit them itself;
 // - /cms is the site editor (Payload, cms/), which runs beside Medusa (src/lib/cms.ts) and is
-//   shown inside the admin at /app;
+//   shown inside the admin at /app; /cms/edit?path= opens it at the page with that path (the
+//   Whisk bar's Edit page);
 // - every other address is the storefront (Astro, storefront/): the website's pages, drawn from
 //   the CMS, and the shop's, drawn from Medusa, on one address.
 import { defineMiddlewares, type MedusaNextFunction, type MedusaRequest, type MedusaResponse } from "@medusajs/framework/http"
@@ -14,7 +15,7 @@ import { isStaff, personFrom, sessionHolds } from "../lib/staff"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { anyFilled, CMS, formFields, formName, formReturn, isMedusaPath, limitFor, redirectFor, shopAddress, staticFile, STOREFRONT, type Redirect } from "../lib/routes"
 import { storefrontContext } from "../lib/shop"
-import { insideAdmin, isEditorPage, proxy, startCms } from "../lib/cms"
+import { editorFor, editPath, editQuery, findForEdit, insideAdmin, isEditLink, isEditorPage, proxy, startCms } from "../lib/cms"
 
 // The CMS starts with the shop's server, not with its other commands (migrate, exec).
 if (process.argv.includes("start") || process.argv.includes("develop")) startCms()
@@ -106,6 +107,12 @@ const sendRedirect = (req: MedusaRequest, res: MedusaResponse, pathname: string)
 const cms = async (req: MedusaRequest, res: MedusaResponse) => {
   const url = req.originalUrl
   const pathname = url.split("?")[0]
+  if (isEditLink(pathname)) {
+    if (!isStaff(personFrom(req.headers))) return res.redirect(302, `/.whisk/login?return=${encodeURIComponent(url)}`)
+    const { collection, query } = editQuery(editPath(url.slice(pathname.length)))
+    res.set("cache-control", "no-store")
+    return res.redirect(302, editorFor(collection, await findForEdit(req.headers, collection, query)))
+  }
   if (isEditorPage(pathname)) {
     if (!isStaff(personFrom(req.headers))) return res.redirect(302, `/.whisk/login?return=${encodeURIComponent(insideAdmin(url))}`)
     if (req.headers["sec-fetch-dest"] === "document") return res.redirect(302, insideAdmin(url))
