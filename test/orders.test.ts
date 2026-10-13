@@ -66,6 +66,7 @@ test("the order email says how to pay by bank transfer, and escapes what custome
 test("every email renders a subject, html and text", () => {
   const data = {
     orderPlaced: orderView(order, shop, bank),
+    newOrder: { ...orderView(order, shop, bank), adminUrl: "https://kiwi.whisk.page/app/orders/order_1" },
     orderShipped: { shop: "Kiwi Goods", shopUrl: shop.url, displayId: "#42", tracking: [{ number: "NZ123", url: "https://track/NZ123" }] },
     orderCanceled: { shop: "Kiwi Goods", shopUrl: shop.url, displayId: "#42" },
     refunded: { shop: "Kiwi Goods", shopUrl: shop.url, displayId: "#42", amount: 10, currency: "nzd" },

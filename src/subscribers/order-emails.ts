@@ -1,4 +1,5 @@
-// The customer's emails about their order: confirmed, cancelled, sent and refunded.
+// The customer's emails about their order: confirmed, cancelled, sent and refunded; and the
+// business's own copy of each new order (src/lib/notify.ts).
 import type { SubscriberArgs, SubscriberConfig } from "@medusajs/framework"
 import { sendOrderCanceled, sendOrderPlaced, sendRefunded, sendShipped } from "../lib/notify"
 

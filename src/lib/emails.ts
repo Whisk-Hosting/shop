@@ -117,6 +117,35 @@ export const orderPlaced = (o: OrderView): Rendered => {
   }
 }
 
+// The business's own copy of a new order, to the addresses in SHOP_ORDERS_TO.
+export type StaffOrderView = OrderView & { adminUrl: string }
+
+const PAID_BY: Record<OrderView["paymentMethod"], string> = { bank_transfer: "Bank transfer, not yet paid", card: "Card", paypal: "PayPal", account: "On account", other: "Other" }
+
+export const newOrder = (o: StaffOrderView): Rendered => {
+  const who = [o.shippingAddress?.name, o.shippingAddress?.company, o.email].filter(Boolean) as string[]
+  const facts: [string, string][] = [
+    ["Customer", who.join(", ")],
+    ["Payment", PAID_BY[o.paymentMethod]],
+    ...(o.poNumber ? [["PO", o.poNumber] as [string, string]] : []),
+  ]
+  return {
+    subject: `New order ${o.displayId}, ${money(o.total, o.currency)}`,
+    html: layout(
+      o.shop,
+      o.shopUrl,
+      `New order ${o.displayId}`,
+      h1(`New order ${o.displayId}`) +
+        `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${facts.map(([k, v]) => row(k, v)).join("")}</table>` +
+        button(o.adminUrl, "Open in the admin") +
+        linesTable(o) +
+        totalsTable(o) +
+        addressBlock(o.shippingAddress),
+    ),
+    text: [`New order ${o.displayId}`, facts.map(([k, v]) => `${k}: ${v}`).join("\n"), o.adminUrl, linesText(o), totalsText(o)].join("\n\n"),
+  }
+}
+
 export type ShipmentView = { shop: string; shopUrl: string; displayId: string; tracking: { number: string; url?: string | null }[] }
 
 export const orderShipped = (s: ShipmentView): Rendered => {
@@ -182,5 +211,5 @@ export const passwordReset = (r: ResetView): Rendered => ({
 // An email a plugin rendered itself, such as trade ordering's approval requests.
 export const rendered = (r: Rendered): Rendered => ({ subject: String(r.subject), html: String(r.html), text: String(r.text) })
 
-export const templates = { orderPlaced, orderShipped, orderCanceled, refunded, signInCode, passwordReset, rendered }
+export const templates = { orderPlaced, newOrder, orderShipped, orderCanceled, refunded, signInCode, passwordReset, rendered }
 export type TemplateName = keyof typeof templates

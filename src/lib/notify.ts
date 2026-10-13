@@ -3,7 +3,7 @@
 // sends nothing more.
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import type { MedusaContainer } from "@medusajs/framework/types"
-import { bankAccountOf, displayId, ORDER_FIELDS, orderView, type OrderLike } from "./orders"
+import { adminOrderUrl, bankAccountOf, displayId, ORDER_FIELDS, orderView, staffAddresses, type OrderLike } from "./orders"
 import { shopInfo } from "./shop"
 
 const orderOf = async (scope: MedusaContainer, id: string): Promise<OrderLike | null> => {
@@ -14,12 +14,20 @@ const orderOf = async (scope: MedusaContainer, id: string): Promise<OrderLike | 
 const send = (scope: MedusaContainer, to: string, template: string, data: Record<string, unknown>, key: string) =>
   scope.resolve(Modules.NOTIFICATION).createNotifications({ to, channel: "email", template, data, idempotency_key: key })
 
+// The customer's confirmation, and the business's own copy to each address in SHOP_ORDERS_TO.
+// One failed send does not stop the others; the first failure is thrown for the sweep to log.
 export const sendOrderPlaced = async (scope: MedusaContainer, orderId: string) => {
   const order = await orderOf(scope, orderId)
-  if (!order?.email) return
+  if (!order) return
   const [store] = await scope.resolve(Modules.STORE).listStores({}, { take: 1 })
   const view = orderView(order, await shopInfo(scope), bankAccountOf(store?.metadata))
-  await send(scope, order.email, "orderPlaced", view, `order-placed:${order.id}`)
+  const staff = { ...view, adminUrl: adminOrderUrl(view.shopUrl, order.id) }
+  const sends = [
+    ...(order.email ? [send(scope, order.email, "orderPlaced", view, `order-placed:${order.id}`)] : []),
+    ...staffAddresses(process.env.SHOP_ORDERS_TO).map((to) => send(scope, to, "newOrder", staff, `order-placed-staff:${order.id}:${to}`)),
+  ]
+  const failed = (await Promise.allSettled(sends)).find((r): r is PromiseRejectedResult => r.status === "rejected")
+  if (failed) throw failed.reason
 }
 
 export const sendOrderCanceled = async (scope: MedusaContainer, orderId: string) => {

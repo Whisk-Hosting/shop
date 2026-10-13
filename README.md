@@ -195,6 +195,11 @@ delivery once and then leaves them to the admin):
 With prices before tax, the cart, checkout, order pages and emails show lines and the subtotal
 before tax, the tax on its own line, then the total.
 
+## Hear of each order
+
+Set `SHOP_ORDERS_TO` in `env` to the addresses, separated by commas, that are told of each new
+order: what was bought, who by, how it was paid, and a link to the order in the admin.
+
 ## Start with a catalogue
 
 `catalogue/catalogue.json` lists products to start with: `{"products": [{"handle":

@@ -1,5 +1,5 @@
-// Every fifteen minutes, sends any order confirmation from the last two days that has not gone
-// out: one whose event was lost in a restart, or whose send failed. Already-sent ones are
+// Every fifteen minutes, sends any order confirmation from the last two days, the customer's or
+// the business's own copy, that has not gone out: one whose event was lost in a restart, or whose send failed. Already-sent ones are
 // skipped by their key.
 import type { MedusaContainer } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"

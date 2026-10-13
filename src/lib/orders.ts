@@ -127,3 +127,11 @@ export const bankAccountOf = (metadata: Record<string, unknown> | null | undefin
   const number = typeof metadata?.bank_account_number === "string" ? metadata.bank_account_number.trim() : ""
   return name && number ? { accountName: name, accountNumber: number } : null
 }
+
+// Who on the business's team is told of each new order: SHOP_ORDERS_TO, addresses separated by
+// commas. Anything that is not an address is left out.
+export const staffAddresses = (value: string | undefined): string[] =>
+  [...new Set((value ?? "").split(/[,;\s]+/).map((a) => a.trim().toLowerCase()).filter((a) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(a)))]
+
+// The order's page in the admin.
+export const adminOrderUrl = (shopUrl: string, id: string) => `${shopUrl.replace(/\/$/, "")}/app/orders/${encodeURIComponent(id)}`
