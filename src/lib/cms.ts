@@ -129,6 +129,7 @@ export const editQuery = (path: string): { collection: "pages" | "product-pages"
   const forms = (p: string) => (p === "/" ? [p] : [p, p.endsWith("/") ? p.slice(0, -1) : `${p}/`])
   const paths = [...new Set([...forms(path), ...forms(decodeOr(path))])]
   paths.forEach((p, i) => q.set(`where[or][${i}][path][equals]`, p))
+  q.set("limit", "10") // a page for every site, and each market's own (forMarket)
   return { collection: "pages", query: q }
 }
 const decodeOr = (s: string) => {
@@ -145,15 +146,20 @@ export const editorFor = (collection: string, found: { id?: unknown } | null) =>
 // drafts to the team only (cms/src/access.ts).
 const IDENTITY = ["x-whisk-user-id", "x-whisk-email", "x-whisk-name", "x-whisk-audience", "x-whisk-roles"]
 
-// findForEdit is the document, published or draft, that /cms/edit opens, asked of the editor's API
-// as the person here; null when there is none or the editor cannot answer.
-export const findForEdit = async (h: http.IncomingHttpHeaders, collection: string, query: URLSearchParams) => {
+// Of the pages at one address, the one a market's site shows: its own, else the one for every site.
+export const forMarket = <T extends { market?: string | null }>(docs: readonly T[], market: string | null): T | null =>
+  docs.find((d) => market && d.market === market) ?? docs.find((d) => !d.market) ?? docs[0] ?? null
+
+// findForEdit is the document, published or draft, that /cms/edit opens (on a market's site, the
+// page that site shows), asked of the editor's API as the person here; null when there is none or
+// the editor cannot answer.
+export const findForEdit = async (h: http.IncomingHttpHeaders, collection: string, query: URLSearchParams, market: string | null = null) => {
   const headers = Object.fromEntries(IDENTITY.filter((k) => typeof h[k] === "string").map((k) => [k, h[k] as string]))
   try {
     const res = await fetch(`${cmsAddress()}/cms/api/${collection}?${query}`, { headers: { accept: "application/json", ...headers }, signal: AbortSignal.timeout(5_000) })
     if (!res.ok) return null
-    const body = (await res.json()) as { docs?: { id?: unknown }[] }
-    return body?.docs?.[0] ?? null
+    const body = (await res.json()) as { docs?: { id?: unknown; market?: string | null }[] }
+    return forMarket(body?.docs ?? [], market)
   } catch {
     return null
   }

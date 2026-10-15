@@ -3,6 +3,7 @@ import assert from "node:assert/strict"
 import { addressFrom, fromPrice, lineAmount, money, picture, robotsTxt, safeReturn, sitemap, sums, variantFor, variantLabel } from "../storefront/src/lib/format"
 import { mergedCookies, query } from "../storefront/src/lib/medusa"
 import { passwordProblem, registerProblem } from "../storefront/src/lib/account"
+import { forSite } from "../storefront/src/lib/cms"
 
 test("money and pictures", () => {
   assert.equal(money(45, "nzd"), "$45.00")
@@ -95,4 +96,12 @@ test("a cart line names its variant only when it adds something", () => {
   assert.equal(variantLabel({ title: "Mug", variant_title: "Default variant" }), null)
   assert.equal(variantLabel({ product_title: "Goggles", variant_title: "Low" }), "Low")
   assert.equal(variantLabel({ product_title: "Goggles", variant_title: null }), null)
+})
+
+test("forSite", () => {
+  const docs = [{ path: "/delivery", market: "au" }, { path: "/delivery", market: null }]
+  assert.equal(forSite(docs, "au")?.market, "au")
+  assert.equal(forSite(docs, "nz")?.market, null)
+  assert.equal(forSite([{ path: "/x", market: "au" }], "nz"), null)
+  assert.equal(forSite([{ path: "/x", market: "au" }], null), null)
 })

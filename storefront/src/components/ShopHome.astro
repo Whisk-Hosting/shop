@@ -13,7 +13,7 @@ const page = Math.max(1, Number(Astro.url.searchParams.get("page")) || 1)
 const perPage = 24
 const { products: list, count } = await products(api(shop, Astro.request), shop, { limit: perPage, offset: (page - 1) * perPage })
 ---
-<Shop title={heading} description={`Shop online at ${shop.name}.`}>
+<Shop title={heading} description={`Shop online at ${shop.name}.`} sameOnEverySite={Astro.url.pathname === "/"}>
   <h1>{heading ?? shop.name}</h1>
   <ProductGrid products={list} count={count} page={page} perPage={perPage} base={Astro.url.pathname + Astro.url.search} empty="No products yet." />
 </Shop>

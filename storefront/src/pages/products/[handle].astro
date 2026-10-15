@@ -10,7 +10,7 @@ import { inStock, productLd, withTax } from "../../lib/seo"
 // One page per product: its price, options and stock from the shop (Medusa), read live, and its
 // story from the CMS's product page of the same handle, when it has one.
 const shop = Astro.locals.shop
-const r = reader(shop.cms, Astro.request)
+const r = reader(shop.cms, Astro.request, shop.market.key)
 const [p, story] = await Promise.all([
   getProduct(api(shop, Astro.request), shop, Astro.params.handle ?? ""),
   productPage(r, Astro.params.handle ?? "").catch(() => null),

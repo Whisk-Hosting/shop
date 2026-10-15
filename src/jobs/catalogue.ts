@@ -11,7 +11,7 @@ import type { MedusaContainer } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { createProductCategoriesWorkflow, createProductsWorkflow, updateProductsWorkflow, uploadFilesWorkflow } from "@medusajs/medusa/core-flows"
 import { catalogueFrom, categoriesToAdd, handleOf, imageType, productInput, productsToAdd } from "../lib/catalogue"
-import { marketFrom } from "../lib/market"
+import { marketsFrom } from "../lib/market"
 import { staticFile } from "../lib/routes"
 
 type Logger = { info: (m: string) => void; warn: (m: string) => void }
@@ -55,7 +55,8 @@ export default async function catalogue(container: MedusaContainer) {
   const dir = path.resolve(process.cwd(), "catalogue")
   const file = path.join(dir, "catalogue.json")
   if (!existsSync(file)) return
-  const products = catalogueFrom(JSON.parse(readFileSync(file, "utf8")))
+  const markets = marketsFrom(process.env)
+  const products = catalogueFrom(JSON.parse(readFileSync(file, "utf8")), markets.map((m) => m.key))
 
   const productModule = container.resolve(Modules.PRODUCT)
   const stores = container.resolve(Modules.STORE)
@@ -94,7 +95,12 @@ export default async function catalogue(container: MedusaContainer) {
 
   const [store] = await stores.listStores({}, { take: 1 })
   const [profile] = await fulfillment.listShippingProfiles({ type: "default" }, { take: 1 })
-  const ctx = { currency: marketFrom(process.env).currency, channelId: store.default_sales_channel_id!, profileId: profile.id, categoryIds, imageUrls }
+  // Each market's sales channel (src/scripts/setup.ts); a one-market shop's is the store's own.
+  const channels = await container.resolve(Modules.SALES_CHANNEL).listSalesChannels({}, { select: ["id", "metadata"] })
+  const channelOf = (key: string) => channels.find((c) => c.metadata?.market === key)?.id ?? (markets.length === 1 ? store.default_sales_channel_id : undefined)
+  const missing = markets.filter((m) => !channelOf(m.key))
+  if (missing.length) throw new Error(`catalogue: the shop is not set up to sell in ${missing.map((m) => m.name).join(", ")} yet: run the migrate step`)
+  const ctx = { markets: markets.map((m) => ({ key: m.key, currency: m.currency, channelId: channelOf(m.key)! })), profileId: profile.id, categoryIds, imageUrls }
   await createProductsWorkflow(container).run({ input: { products: add.map((p) => productInput(p, ctx)) } })
   logger.info(`catalogue: added ${add.length} products${made.length ? ` and ${made.length} categories` : ""}`)
 }

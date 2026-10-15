@@ -20,7 +20,7 @@ export const GET: APIRoute = async ({ request, locals, url }) => {
     return out
   }
   const [site, products, cats, cols] = await Promise.all([
-    listedPages(reader(locals.shop.cms, request)),
+    listedPages(reader(locals.shop.cms, request, locals.shop.market.key)),
     all("/store/products", "products", "handle,updated_at"),
     all("/store/product-categories", "product_categories", "handle,updated_at"),
     all("/store/collections", "collections", "handle,updated_at"),

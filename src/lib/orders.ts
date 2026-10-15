@@ -6,6 +6,7 @@ export const ORDER_FIELDS = [
   "id",
   "display_id",
   "email",
+  "sales_channel_id",
   "currency_code",
   "metadata",
   "item_total",
@@ -37,6 +38,7 @@ export type OrderLike = {
   id: string
   display_id?: number | null
   email?: string | null
+  sales_channel_id?: string | null
   currency_code: string
   metadata?: Record<string, unknown> | null
   item_total?: Num

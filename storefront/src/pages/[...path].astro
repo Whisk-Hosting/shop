@@ -8,7 +8,7 @@ import ShopHome from "../components/ShopHome.astro"
 import { otherForm, page, pageTitle, reader } from "../lib/cms"
 
 const path = Astro.url.pathname
-const r = reader(Astro.locals.shop.cms, Astro.request)
+const r = reader(Astro.locals.shop.cms, Astro.request, Astro.locals.shop.market.key)
 const found = await page(r, path)
 const shopHome = !found && path === "/"
 if (!found && !shopHome) {
@@ -19,7 +19,7 @@ if (!found && !shopHome) {
 }
 ---
 {shopHome ? <ShopHome /> : found && (
-<Shop fullTitle={pageTitle(found, Astro.locals.shop.name)} description={found.description ?? undefined} image={typeof found.image === "object" ? found.image?.url ?? undefined : undefined} noindex={!!found.noindex || r.preview} head={found.head ?? undefined} preview={r.preview}>
+<Shop fullTitle={pageTitle(found, Astro.locals.shop.name)} description={found.description ?? undefined} image={typeof found.image === "object" ? found.image?.url ?? undefined : undefined} noindex={!!found.noindex || r.preview} sameOnEverySite={!found.market} head={found.head ?? undefined} preview={r.preview}>
   <Blocks blocks={found.layout} />
 </Shop>
 )}

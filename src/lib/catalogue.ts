@@ -8,7 +8,10 @@ export type CatalogueProduct = {
   readonly title: string
   readonly subtitle?: string
   readonly description?: string
-  readonly price: number // in the currency's main unit, entered as the market enters prices
+  // In the currency's main unit, entered as the market enters prices: one price for every market
+  // the product is sold in, or one per market ({"nz": 24, "au": 22}).
+  readonly price: number | Readonly<Record<string, number>>
+  readonly markets?: readonly string[] // the markets it is sold in (src/lib/market.ts); every market when left out
   readonly sku?: string
   readonly inStock?: boolean // false: listed, but sold out until staff add stock
   readonly categories?: readonly string[]
@@ -18,15 +21,34 @@ export type CatalogueProduct = {
 
 const HANDLE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
-// The catalogue file, checked: every product needs a handle, a title and a price, and handles
-// are unique. Throws with every problem found, so one deploy shows them all.
-export const catalogueFrom = (json: unknown): CatalogueProduct[] => {
+const isPrice = (v: unknown) => typeof v === "number" && v >= 0
+
+// The markets a product is sold in, of those the shop sells in.
+export const marketsOf = (p: Pick<CatalogueProduct, "markets">, shop: readonly string[]): string[] =>
+  p.markets?.length ? shop.filter((k) => p.markets!.includes(k)) : [...shop]
+
+// A product's price in one market.
+export const priceIn = (p: Pick<CatalogueProduct, "price">, market: string): number | undefined =>
+  typeof p.price === "number" ? p.price : p.price[market]
+
+// The catalogue file, checked: every product needs a handle, a title and a price in each market it
+// is sold in, it names only markets the shop sells in, and handles are unique. Throws with every
+// problem found, so one deploy shows them all.
+export const catalogueFrom = (json: unknown, markets: readonly string[] = ["nz", "au"]): CatalogueProduct[] => {
   const products = (json as { products?: unknown })?.products
   if (!Array.isArray(products)) throw new Error("catalogue.json needs a products list")
   const problems = products.flatMap((p: any, i) => [
     ...(typeof p?.handle === "string" && HANDLE.test(p.handle) ? [] : [`product ${i + 1}: handle must be lower-case words joined by hyphens`]),
     ...(typeof p?.title === "string" && p.title.trim() ? [] : [`product ${i + 1}: title is missing`]),
-    ...(typeof p?.price === "number" && p.price >= 0 ? [] : [`product ${i + 1}: price must be a number of at least 0`]),
+    ...(isPrice(p?.price) || (p?.price && typeof p.price === "object" && Object.values(p.price).every(isPrice))
+      ? []
+      : [`product ${i + 1}: price must be a number of at least 0, or one per market as {"nz": 24}`]),
+    ...(p?.markets === undefined || (Array.isArray(p.markets) && p.markets.length && p.markets.every((k: unknown) => markets.includes(String(k))))
+      ? []
+      : [`product ${i + 1}: markets must list markets the shop sells in (${markets.join(", ")})`]),
+    ...(p?.price && typeof p.price === "object" && !Array.isArray(p.price)
+      ? marketsOf(p, markets).filter((k) => !isPrice(p.price[k])).map((k) => `product ${i + 1}: no price for ${k}`)
+      : []),
     ...((p?.options ?? []).every((o: any) => o?.title && Array.isArray(o.values) && o.values.length) ? [] : [`product ${i + 1}: every option needs a title and values`]),
   ])
   const handles = products.map((p: any) => p?.handle)
@@ -63,9 +85,10 @@ export const variantsOf = (p: CatalogueProduct) => {
 // The input createProductsWorkflow takes for one product.
 export const productInput = (
   p: CatalogueProduct,
-  ctx: { currency: string; channelId: string; profileId: string; categoryIds: Record<string, string>; imageUrls: Record<string, string> },
+  ctx: { markets: readonly { key: string; currency: string; channelId: string }[]; profileId: string; categoryIds: Record<string, string>; imageUrls: Record<string, string> },
 ) => {
   const { options, variants } = variantsOf(p)
+  const sold = marketsOf(p, ctx.markets.map((m) => m.key)).map((k) => ctx.markets.find((m) => m.key === k)!)
   const images = (p.images ?? []).map((f) => ctx.imageUrls[f]).filter((u): u is string => !!u)
   return {
     title: p.title,
@@ -79,9 +102,9 @@ export const productInput = (
     variants: variants.map((v) => ({
       ...v,
       manage_inventory: p.inStock === false,
-      prices: [{ currency_code: ctx.currency, amount: p.price }],
+      prices: sold.map((m) => ({ currency_code: m.currency, amount: priceIn(p, m.key)! })),
     })),
-    sales_channels: [{ id: ctx.channelId }],
+    sales_channels: sold.map((m) => ({ id: m.channelId })),
     shipping_profile_id: ctx.profileId,
     category_ids: (p.categories ?? []).map((c) => ctx.categoryIds[handleOf(c)]).filter((id): id is string => !!id),
   }

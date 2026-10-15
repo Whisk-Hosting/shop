@@ -6,7 +6,7 @@ import { Modules } from "@medusajs/framework/utils"
 import { CODE_MINUTES, issue, mayRequest, newCode, newNonce, normalEmail, validEmail } from "../../../lib/codes"
 import { kv, setJson } from "../../../lib/kv"
 import { secretsFrom } from "../../../lib/settings"
-import { shopInfo } from "../../../lib/shop"
+import { requestHost, shopInfoAt } from "../../../lib/shop"
 
 const NONCE_COOKIE = "shop_code"
 
@@ -27,12 +27,12 @@ export const POST = async (req: MedusaRequest<{ email?: string }>, res: MedusaRe
   const nonce = newNonce()
   const { codes } = secretsFrom(process.env)
   await setJson(`code:${email}`, issue(codes, email, code, nonce, Date.now()), CODE_MINUTES * 60)
-  const shop = await shopInfo(req.scope)
+  const shop = await shopInfoAt(req.scope, requestHost(req.headers))
   await req.scope.resolve(Modules.NOTIFICATION).createNotifications({
     to: email,
     channel: "email",
     template: "signInCode",
-    data: { shop: shop.name, shopUrl: shop.url, code, minutes: CODE_MINUTES },
+    data: { shop: shop.name, shopUrl: shop.url, market: shop.market.key, code, minutes: CODE_MINUTES },
   })
   res.cookie(NONCE_COOKIE, nonce, { httpOnly: true, secure: req.secure, sameSite: "lax", maxAge: CODE_MINUTES * 60_000, path: "/" })
   return res.status(200).json({ sent: true })

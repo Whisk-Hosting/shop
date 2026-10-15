@@ -14,7 +14,14 @@ import { kv } from "../lib/kv"
 import { isStaff, personFrom, sessionHolds } from "../lib/staff"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { anyFilled, CMS, formFields, formName, formReturn, isMedusaPath, limitFor, redirectFor, shopAddress, staticFile, STOREFRONT, type Redirect } from "../lib/routes"
-import { storefrontContext } from "../lib/shop"
+import { requestHost, storefrontContext } from "../lib/shop"
+import { marketFor, marketsFrom } from "../lib/market"
+
+// The market whose site a request was made to, in a shop that sells in several.
+const siteMarket = (headers: Record<string, string | string[] | undefined>) => {
+  const markets = marketsFrom(process.env)
+  return markets.length > 1 ? marketFor(markets, requestHost(headers)).key : null
+}
 import { editorFor, editPath, editQuery, findForEdit, insideAdmin, isEditLink, isEditorPage, proxy, startCms } from "../lib/cms"
 
 // The CMS starts with the shop's server, not with its other commands (migrate, exec).
@@ -50,6 +57,9 @@ const rateLimited = async (req: MedusaRequest, res: MedusaResponse, next: Medusa
     res.set("retry-after", "900")
     return refuse(res, 429, "RATE_LIMITED", "Too many tries.", "Wait fifteen minutes, or sign in with an emailed code.")
   }
+  // The password email links back to the site it was asked for on (src/subscribers/password-reset.ts).
+  const host = requestHost(req.headers)
+  if (email && host && req.originalUrl.includes("/reset-password")) await kv().set(`reset-host:${email}`, host, 900)
   next()
 }
 
@@ -111,7 +121,7 @@ const cms = async (req: MedusaRequest, res: MedusaResponse) => {
     if (!isStaff(personFrom(req.headers))) return res.redirect(302, `/.whisk/login?return=${encodeURIComponent(url)}`)
     const { collection, query } = editQuery(editPath(url.slice(pathname.length)))
     res.set("cache-control", "no-store")
-    return res.redirect(302, editorFor(collection, await findForEdit(req.headers, collection, query)))
+    return res.redirect(302, editorFor(collection, await findForEdit(req.headers, collection, query, siteMarket(req.headers))))
   }
   if (isEditorPage(pathname)) {
     if (!isStaff(personFrom(req.headers))) return res.redirect(302, `/.whisk/login?return=${encodeURIComponent(insideAdmin(url))}`)
@@ -173,7 +183,7 @@ const storefront = async (req: MedusaRequest, res: MedusaResponse, next: MedusaN
   if (form && req.method === "POST") return formPost(req, res, form).catch(next)
   if (sendRedirect(req, res, pathname)) return
   if (await sendStatic(req, res, pathname)) return
-  const [{ handler }, shop] = await Promise.all([storefrontEntry(), storefrontContext(req.scope)])
+  const [{ handler }, shop] = await Promise.all([storefrontEntry(), storefrontContext(req.scope, requestHost(req.headers))])
   return handler(req, res, next, { shop })
 }
 

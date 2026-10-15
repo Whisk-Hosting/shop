@@ -15,7 +15,8 @@ export type ShopContext = {
   stripeTestKey: string | null // STRIPE_TEST_PUBLISHABLE_KEY, for test mode (src/lib/stripe-mode.ts)
   paypalClientId: string | null
   providers: string[] // payment providers the region takes and the server has loaded
-  market: { country: string; currency: string; name: string; locale: string; timeZone: string; taxRate: number; taxName: string; taxInclusive: boolean } // src/lib/market.ts
+  market: { key: string; country: string; currency: string; name: string; locale: string; timeZone: string; taxRate: number; taxName: string; taxInclusive: boolean; host: string | null } // src/lib/market.ts
+  alternates: { hreflang: string; origin: string }[] // the shop's sites in its markets, when it sells in several
 }
 
 export class ApiError extends Error {
@@ -44,6 +45,8 @@ export const api = (shop: ShopContext, request: Request, call: Call = { setCooki
     }
     const cookie = mergedCookies(request.headers.get("cookie") ?? "", call.setCookies)
     if (cookie) headers.cookie = cookie
+    // The domain the visitor came to, so the API's emails link to that market's site.
+    headers["x-forwarded-host"] = request.headers.get("x-forwarded-host") ?? new URL(request.url).host
     const forwarded = request.headers.get("x-forwarded-for")
     if (forwarded) headers["x-forwarded-for"] = forwarded
     if (bearer) headers.authorization = `Bearer ${bearer}`

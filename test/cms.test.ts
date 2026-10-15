@@ -1,6 +1,6 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { adminSection, editorFor, editPath, editQuery, forwardHeaders, insideAdmin, isEditLink, isEditorPage, restartDelay } from "../src/lib/cms"
+import { adminSection, editorFor, forMarket, editPath, editQuery, forwardHeaders, insideAdmin, isEditLink, isEditorPage, restartDelay } from "../src/lib/cms"
 import { otherForm, reader } from "../storefront/src/lib/cms"
 
 test("the editor's pages are the team's, its API anyone's", () => {
@@ -65,4 +65,12 @@ test("the Whisk bar's Edit page opens the editor, inside the admin, at what the 
   assert.equal(editorFor("product-pages", { id: "abc" }), insideAdmin("/cms/collections/product-pages/abc"))
   assert.equal(editorFor("pages", null), insideAdmin("/cms/collections/pages"))
   assert.equal(editorFor("product-pages", null), "/app/product-pages?to=%2Fcms%2Fcollections%2Fproduct-pages")
+})
+
+test("forMarket", () => {
+  const docs = [{ id: 1, market: "au" }, { id: 2, market: null }, { id: 3, market: "nz" }]
+  assert.equal(forMarket(docs, "nz")?.id, 3)
+  assert.equal(forMarket(docs, null)?.id, 2)
+  assert.equal(forMarket([{ id: 1, market: "au" }], "nz")?.id, 1)
+  assert.equal(forMarket([], "nz"), null)
 })

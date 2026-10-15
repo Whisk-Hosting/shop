@@ -12,6 +12,12 @@ import {
   authHeader, baseUrl, completeRequest, hostedPageUrl, refundRequest, sessionRequest, statusOf, voidRequest,
   type Session, type Transaction, type TransactionRequest, type WindcaveEnv,
 } from "../../lib/windcave"
+import { marketsFrom, marketUrl } from "../../lib/market"
+
+// The customer comes back from Windcave to the site of the market paying in this currency, where
+// their cart is (src/lib/market.ts).
+const siteFor = (currency: string, publicUrl: string) =>
+  marketUrl(marketsFrom(process.env).find((m) => m.currency === currency.toLowerCase()) ?? { host: null }, publicUrl)
 
 type Options = { username: string; apiKey: string; environment: WindcaveEnv; publicUrl: string; capture?: boolean }
 
@@ -51,7 +57,7 @@ export default class WindcaveProviderService extends AbstractPaymentProvider<Opt
 
   private async create(amount: number, currency: string, paymentSessionId: string): Promise<Session> {
     return this.call<Session>("POST", "/sessions", sessionRequest({
-      amount, currency, paymentSessionId, publicUrl: this.options_.publicUrl, capture: this.options_.capture !== false,
+      amount, currency, paymentSessionId, publicUrl: siteFor(currency, this.options_.publicUrl), capture: this.options_.capture !== false,
     }))
   }
 

@@ -123,7 +123,7 @@ A business's website and online shop on Whisk, headless, in one app on one addre
 every page from two back ends beside it: [Medusa](https://medusajs.com) for products, prices,
 stock, carts, orders and payments, and [Payload](https://payloadcms.com) for the website's pages,
 each product's story, the menus and the pictures. It sells in New Zealand dollars with GST
-included, or in Australia (`SHOP_COUNTRY`, below), takes cards, Apple Pay, Google Pay and
+included, or in Australia (`SHOP_COUNTRY`, below), or in both on two domains (`SHOP_MARKETS`), takes cards, Apple Pay, Google Pay and
 Afterpay through Stripe, cards through Windcave, PayPal, and bank transfer, and emails customers
 their orders. Customers sign in with an emailed code or a password. Any business can run it.
 It needs about 700 MB of memory, which a Promoted app has; trade ordering (companies, trade
@@ -198,6 +198,29 @@ delivery once and then leaves them to the admin):
 
 With prices before tax, the cart, checkout, order pages and emails show lines and the subtotal
 before tax, the tax on its own line, then the total.
+
+## Sell in several countries
+
+One shop can sell in each market on its own domain. Add each domain to the app in the dashboard,
+then list them in `env` instead of `SHOP_COUNTRY`:
+
+```yaml
+env:
+  SHOP_MARKETS: "nz=example.co.nz, au=example.com.au"
+```
+
+Each domain then has its own currency, tax, delivery, stock and products, and the first market
+listed answers every other address. Setup gives each market a sales channel, so a product is sold
+in a market when it is in that market's channel; staff choose them in the admin. A shop that
+already sells keeps its products in the market it sold in.
+
+- `catalogue.json` products name where they are sold and their price in each:
+  `"markets": ["au"]`, `"price": {"nz": 24, "au": 22}` (one number is the price everywhere).
+- A website page can be for one site only (Only on, beside the page in the editor). That site
+  shows it at its address instead of the page for every site, such as each country's delivery page.
+- `SHOP_ORDERS_TO_AU`, `SHOP_EMAIL_FROM_AU`, `SHOP_TIME_ZONE_AU` and
+  `SHOP_PRICES_INCLUDE_TAX_AU` set one market's own; without them the plain setting applies.
+- Emails link to the customer's own site, and each site's sitemap lists what it sells.
 
 ## Hear of each order
 
