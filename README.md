@@ -74,8 +74,9 @@ Windcave and PayPal switch on when their keys are set ([Take payments](#take-pay
   sent.
 - **New Zealand or Australia**: prices in NZD with 15% GST or AUD with 10% GST, included in
   prices or added at checkout, with delivery set up on the first deploy.
-- **A website around it**: pages built from blocks (hero, text, picture, columns, products,
-  form, HTML) at any address, and a story under each product's live price, options and stock.
+- **A website around it**: pages built from blocks (hero, text, picture, columns, list, products,
+  form, HTML) at any address, shared lists (testimonials, people, questions, locations, logos)
+  edited once and shown on any page, and a story under each product's live price, options and stock.
 - **A live preview** beside the editor that follows each change, drafts only the team can see,
   and every earlier version kept.
 - **Forms** that save each entry in the shop's own database, behind a bot check.
@@ -132,8 +133,9 @@ prices, approvals, pay on account) comes only with a Promoted app (`promoted: tr
 
 The business's Whisk team runs everything from one admin at `/app` with their Whisk sign-in:
 orders, products and customers, and beside them Pages, Product pages, Menu and Media, which open
-Payload's editor inside the admin. A page is a list of blocks (hero, text, picture, columns,
-products, form, HTML) at an address; drafts are seen only by the team, in a preview that follows
+Payload's editor inside the admin. A page is a list of blocks (hero, text, picture, columns, list,
+products, form, HTML) at an address, a list block showing one of the shared lists
+(`cms/src/collections/Lists.ts`); drafts are seen only by the team, in a preview that follows
 the edit. A product's page at `/products/<handle>` shows its live price, options and stock from
 Medusa, then the blocks of the product page with the same handle. A form block posts to
 `/forms/<name>`, kept in the database's `form_entries` table. A coding agent edits the pages
