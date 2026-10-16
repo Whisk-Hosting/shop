@@ -34,6 +34,8 @@ env:
   CMS_PORT: "9100"
   # The editor is part of a shop: it offers product pages and the products block (cms/src/app.ts).
   CMS_SHOP: "1"
+  # The business's time zone for the times the editor shows, such as enquiries (cms/src/admin/data.ts).
+  SITE_TIME_ZONE: "UTC"
   STRIPE_CAPTURE: automatic
   WINDCAVE_ENVIRONMENT: live
   WINDCAVE_CAPTURE: automatic
