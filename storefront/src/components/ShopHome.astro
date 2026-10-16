@@ -5,15 +5,25 @@ import Shop from "../layouts/Shop.astro"
 import ProductGrid from "./ProductGrid.astro"
 import { api } from "../lib/medusa"
 import { products } from "../lib/store"
+import { menus as getMenus, reader } from "../lib/cms"
+import { listDescription } from "../lib/seo"
 
 type Props = { heading?: string }
 const shop = Astro.locals.shop
 const heading = Astro.props.heading
 const page = Math.max(1, Number(Astro.url.searchParams.get("page")) || 1)
 const perPage = 24
-const { products: list, count } = await products(api(shop, Astro.request), shop, { limit: perPage, offset: (page - 1) * perPage })
+const [{ products: list, count }, m] = await Promise.all([
+  products(api(shop, Astro.request), shop, { limit: perPage, offset: (page - 1) * perPage }),
+  getMenus(reader(shop.cms, Astro.request, shop.market.key)),
+])
+// The list's search details as the team wrote them in the CMS (Menu, Shop in search), else made
+// from what it holds. The home page's are the home page's own.
+const atList = Astro.url.pathname !== "/"
+const fullTitle = (atList && m.productsTitle?.trim()) || undefined
+const description = (atList && m.productsDescription?.trim()) || listDescription("Shop online", list.map((p: any) => p.title).slice(0, 6), shop.name)
 ---
-<Shop title={heading} description={`Shop online at ${shop.name}.`} sameOnEverySite={Astro.url.pathname === "/"}>
+<Shop title={heading} fullTitle={fullTitle} description={description} sameOnEverySite={Astro.url.pathname === "/"}>
   <h1>{heading ?? shop.name}</h1>
   <ProductGrid products={list} count={count} page={page} perPage={perPage} base={Astro.url.pathname + Astro.url.search} empty="No products yet." />
 </Shop>

@@ -5,7 +5,7 @@ import "../styles/shop.css"
 import { api } from "../lib/medusa"
 import { cart as getCart, categories as getCategories } from "../lib/store"
 import { menus as getMenus, page as getPage, PREVIEW_SCRIPT, reader } from "../lib/cms"
-import { breadcrumbLd, canonicalUrl, firstPicture, shareImage, siteLd, type Crumb } from "../lib/seo"
+import { breadcrumbLd, canonicalUrl, firstPicture, shareImage, siteLd, titleWithName, type Crumb } from "../lib/seo"
 
 // image: the picture beside a link to the page, else the home page's (set in the CMS), else the
 // first picture on the home page. ld: the
@@ -38,7 +38,7 @@ const [cart, cats, menus, home] = await Promise.all([
 ])
 const count = (cart?.items ?? []).reduce((n: number, i: any) => n + Number(i.quantity), 0)
 const top = cats.filter((c: any) => !c.parent_category_id).sort((x: any, y: any) => (x.rank ?? 0) - (y.rank ?? 0)).slice(0, 12)
-const fullTitle = given ?? (title ? `${title} | ${shop.name}` : shop.name)
+const fullTitle = given ?? titleWithName(title, shop.name)
 const origin = Astro.url.origin
 const url = canonical ?? canonicalUrl(Astro.url)
 const picture = shareImage(origin, image ?? (typeof home?.image === "object" ? home?.image?.url : null) ?? firstPicture(home?.layout))

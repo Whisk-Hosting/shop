@@ -3,6 +3,8 @@ import Shop from "../../layouts/Shop.astro"
 import ProductGrid from "../../components/ProductGrid.astro"
 import { api } from "../../lib/medusa"
 import { categoryByPath, products } from "../../lib/store"
+import { menus as getMenus, reader } from "../../lib/cms"
+import { listDescription } from "../../lib/seo"
 
 const shop = Astro.locals.shop
 const a = api(shop, Astro.request)
@@ -11,9 +13,17 @@ const category = handle ? await categoryByPath(a, handle) : null
 if (!category) return Astro.rewrite("/404")
 const page = Math.max(1, Number(Astro.url.searchParams.get("page")) || 1)
 const perPage = 24
-const { products: list, count } = await products(a, shop, { category: category.id, limit: perPage, offset: (page - 1) * perPage })
+const [{ products: list, count }, m] = await Promise.all([
+  products(a, shop, { category: category.id, limit: perPage, offset: (page - 1) * perPage }),
+  getMenus(reader(shop.cms, Astro.request, shop.market.key)),
+])
+// Its search details as the team wrote them in the CMS (Menu, Shop in search), else its own
+// description, else made from what it holds.
+const own = (m.categories ?? []).find((c) => c.handle === category.handle)
+const fullTitle = own?.searchTitle?.trim() || undefined
+const description = own?.description?.trim() || category.description || listDescription(category.name, list.map((p: any) => p.title).slice(0, 6), shop.name)
 ---
-<Shop title={category.name} description={category.description || `${category.name} at ${shop.name}.`} breadcrumbs={[{ name: category.name, path: `/categories/${category.handle}` }]}>
+<Shop title={category.name} fullTitle={fullTitle} description={description} breadcrumbs={[{ name: category.name, path: `/categories/${category.handle}` }]}>
   <h1>{category.name}</h1>
   {category.description && <p class="muted">{category.description}</p>}
   {(category.category_children ?? []).length > 0 && (

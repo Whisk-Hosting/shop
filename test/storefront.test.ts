@@ -76,10 +76,12 @@ test("the sitemap lists each page with its date, escaped", () => {
 })
 
 test("robots.txt keeps the website's lines first, then the shop's", () => {
-  const shop = "User-agent: *\nAllow: /.whisk/\nDisallow: /cart\nDisallow: /checkout\nDisallow: /account\nDisallow: /order/\nDisallow: /app\nDisallow: /cms\n\nSitemap: https://shop.example.com/sitemap.xml\n"
+  const shop = "User-agent: *\nAllow: /.whisk/\nAllow: /cms/api/media/file/\nDisallow: /cart$\nDisallow: /cart/\nDisallow: /checkout$\nDisallow: /checkout/\nDisallow: /account$\nDisallow: /account/\nDisallow: /order/\nDisallow: /app\nDisallow: /cms\n\nSitemap: https://shop.example.com/sitemap.xml\n"
   assert.equal(robotsTxt("https://shop.example.com", undefined), shop)
   assert.equal(robotsTxt("https://shop.example.com", "  \n"), shop)
   assert.equal(robotsTxt("https://shop.example.com", "User-agent: *\nDisallow: /wp-admin/\n\n"), "User-agent: *\nDisallow: /wp-admin/\n\n# The shop\n" + shop)
+  // The old site's sitemap line goes: the shop names its own.
+  assert.equal(robotsTxt("https://shop.example.com", "User-agent: *\nAllow: /\nSitemap: https://old.example.com/sitemap_index.xml"), "User-agent: *\nAllow: /\n\n# The shop\n" + shop)
 })
 
 test("sums and lineAmount follow whether prices include the tax", () => {

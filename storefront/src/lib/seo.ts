@@ -112,3 +112,23 @@ export const productLd = (p: Product, ctx: { origin: string; shop: string; marke
       })),
   }
 }
+
+// A page's whole <title>: its own and the shop's name, or its own alone when both together are
+// longer than search results show (about 60 characters).
+export const TITLE_MAX = 60
+export const titleWithName = (title: string | undefined, name: string): string =>
+  !title ? name : `${title} | ${name}`.length <= TITLE_MAX ? `${title} | ${name}` : title
+
+// A list of products' description when none is written: what it holds, by the first products'
+// names, cut at a whole name (or a word) to at most 155 characters, ending "and more.".
+export const DESCRIPTION_MAX = 155
+const MORE = " and more."
+export const listDescription = (what: string, titles: readonly string[], name: string): string => {
+  const lead = `${what} at ${name}`
+  const all = titles.length ? `${lead}: ${titles.join(", ")}.` : `${lead}.`
+  if (all.length <= DESCRIPTION_MAX) return all
+  const cut = all.slice(0, DESCRIPTION_MAX - MORE.length)
+  const comma = cut.lastIndexOf(",")
+  const at = comma > lead.length ? comma : cut.lastIndexOf(" ")
+  return `${cut.slice(0, at > 0 ? at : cut.length).replace(/[,:]$/, "")}${MORE}`
+}

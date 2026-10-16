@@ -149,6 +149,21 @@ its metadata names its brand to search engines (the shop's name otherwise). Old 
 `"status": 410` for a page that is gone). Starting content goes in `cms/content/` and is added
 once, never over an edit (`cms/src/content.ts` says how).
 
+A page's title in search results is its own and the shop's name (`Gloves | Maple Street
+Coffee`), or its own alone when both would pass 60 characters. A product page's Search fields
+set its whole title, its description and, for the same product in another size, the product
+search engines should list instead (its canonical address); without them the title is the
+product's and the description its subtitle or details. The Menu's Shop in search tab, shown
+only in a shop, sets the title and description of the product list at `/products` and of each
+category by its handle. Without them a category uses its own description from the shop admin,
+and a list is described by the first products in it, cut at a whole name to at most 155
+characters (`Coffee at Maple Street Coffee: Ethiopia Guji, Colombia Huila and more.`).
+`robots.txt` is the website's own lines (from a moved site, without its `Sitemap:` lines) and
+then the shop's: crawlers stay out of `/cart`, `/checkout`, `/account` and what is under them
+(a page such as `/checkout-guide` stays listed), `/order/`, `/app` and `/cms`, may read the
+pictures Whisk serves at `/.whisk/` and the editor's at `/cms/api/media/file/`, and are given
+the one `sitemap.xml`.
+
 The look is `storefront/` (Astro): the layout, the blocks (`storefront/src/blocks`, one per
 Payload block in `cms/src/blocks`) and `src/styles/shop.css`. Change a block in both places, then
 `cd cms && npx payload migrate:create <name>` for the database.

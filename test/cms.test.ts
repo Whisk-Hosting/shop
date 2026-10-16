@@ -1,7 +1,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import { adminSection, editorFor, forMarket, editPath, editQuery, forwardHeaders, insideAdmin, isEditLink, isEditorPage, restartDelay } from "../src/lib/cms"
-import { otherForm, reader } from "../storefront/src/lib/cms"
+import { encodedForm, otherForm, reader } from "../storefront/src/lib/cms"
 
 test("the editor's pages are the team's, its API anyone's", () => {
   for (const p of ["/cms", "/cms/", "/cms/collections/pages", "/cms/globals/menus", "/cms/apis"]) assert.equal(isEditorPage(p), true, p)
@@ -73,4 +73,11 @@ test("forMarket", () => {
   assert.equal(forMarket(docs, null)?.id, 2)
   assert.equal(forMarket([{ id: 1, market: "au" }], "nz")?.id, 1)
   assert.equal(forMarket([], "nz"), null)
+})
+
+test("a page whose old address was percent-encoded is found by its encoded form", () => {
+  assert.equal(encodedForm("/🍺-tips/"), "/%F0%9F%8D%BA-tips/")
+  assert.equal(encodedForm("/māori/"), "/m%C4%81ori/")
+  assert.equal(encodedForm("/about/"), null)
+  assert.equal(encodedForm("/"), null)
 })

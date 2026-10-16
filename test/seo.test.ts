@@ -1,7 +1,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import { shopAddress } from "../src/lib/routes"
-import { absoluteUrl, breadcrumbLd, canonicalUrl, firstPicture, productLd, shareImage, siteLd, withTax } from "../storefront/src/lib/seo"
+import { absoluteUrl, breadcrumbLd, canonicalUrl, firstPicture, listDescription, productLd, shareImage, siteLd, titleWithName, withTax } from "../storefront/src/lib/seo"
 
 test("each shop page has one address", () => {
   const cases: [string, string | null][] = [
@@ -94,4 +94,19 @@ test("the first picture on a page, for a page that names none", () => {
   assert.equal(firstPicture(layout), "/.whisk/img/COL")
   assert.equal(firstPicture([{ blockType: "hero", image: 12 }]), null)
   assert.equal(firstPicture(null), null)
+})
+
+test("a title keeps the shop's name only while search results show it all", () => {
+  assert.equal(titleWithName("Gloves", "Sober Check Australia"), "Gloves | Sober Check Australia")
+  assert.equal(titleWithName("UroColor 4S Urinalysis Test Strips (pack of 100)", "Sober Check Australia"), "UroColor 4S Urinalysis Test Strips (pack of 100)")
+  assert.equal(titleWithName(undefined, "Sober Check"), "Sober Check")
+  assert.equal(titleWithName("", "Sober Check"), "Sober Check")
+})
+
+test("a list of products is described by what it holds, within 155 characters", () => {
+  assert.equal(listDescription("Gloves", ["Small", "Large"], "Acme"), "Gloves at Acme: Small, Large.")
+  assert.equal(listDescription("Gloves", [], "Acme"), "Gloves at Acme.")
+  const long = listDescription("Alcohol Testing", Array.from({ length: 6 }, (_, i) => `Breathalyser model number ${i} with a long name`), "Sober Check Australia")
+  assert.ok(long.length <= 155, long)
+  assert.match(long, /^Alcohol Testing at Sober Check Australia: Breathalyser model number 0 .* and more\.$/)
 })

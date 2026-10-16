@@ -92,14 +92,27 @@ export const sitemap = (origin: string, entries: { path: string; updated?: strin
     "",
   ].join("\n")
 
-// robots.txt: the website's own first when it has one, then the shop's lines, which keep crawlers
-// out of the cart, checkout, account and admin, let them read the pictures and other files Whisk
-// serves (/.whisk/img/<id>?w=…, which a site's own `Disallow: /*?` would otherwise keep out; the
-// longer rule wins) and name the one sitemap of both.
+// robots.txt: the website's own first when it has one (without its sitemap lines, which name
+// the old site's sitemap), then the shop's lines, which keep crawlers out of the cart, checkout,
+// account and admin (those addresses and what is under them, not a page such as /checkout-guide),
+// let them read the pictures and other files Whisk serves (/.whisk/img/<id>?w=…, which a site's
+// own `Disallow: /*?` would otherwise keep out; the longer rule wins) and the pictures the CMS
+// serves (/cms/api/media/file/…, under the `Disallow: /cms` that keeps the editor out), and name
+// the one sitemap of both.
+const PRIVATE = ["/cart", "/checkout", "/account"]
 export const robotsTxt = (origin: string, siteRobots: string | undefined): string => {
-  const shop = ["User-agent: *", "Allow: /.whisk/", "Disallow: /cart", "Disallow: /checkout", "Disallow: /account", "Disallow: /order/", "Disallow: /app", "Disallow: /cms"]
+  const shop = [
+    "User-agent: *",
+    "Allow: /.whisk/",
+    "Allow: /cms/api/media/file/",
+    ...PRIVATE.flatMap((p) => [`Disallow: ${p}$`, `Disallow: ${p}/`]),
+    "Disallow: /order/",
+    "Disallow: /app",
+    "Disallow: /cms",
+  ]
   const ours = [...shop, "", `Sitemap: ${origin}/sitemap.xml`, ""]
-  return (siteRobots?.trim() ? [siteRobots.replace(/\s*$/, ""), "", "# The shop", ...ours] : ours).join("\n")
+  const site = (siteRobots ?? "").split("\n").filter((l) => !/^\s*sitemap\s*:/i.test(l)).join("\n").replace(/\s*$/, "")
+  return (site.trim() ? [site, "", "# The shop", ...ours] : ours).join("\n")
 }
 
 // A cart's or order's sums as the market writes them. Where prices include the tax, lines and the

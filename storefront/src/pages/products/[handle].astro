@@ -8,7 +8,8 @@ import { productPage, reader } from "../../lib/cms"
 import { inStock, productLd, withTax } from "../../lib/seo"
 
 // One page per product: its price, options and stock from the shop (Medusa), read live, and its
-// story from the CMS's product page of the same handle, when it has one.
+// story from the CMS's product page of the same handle, when it has one, with its search details:
+// the whole title, the description and the product search engines should list in its place.
 const shop = Astro.locals.shop
 const r = reader(shop.cms, Astro.request, shop.market.key)
 const [p, story] = await Promise.all([
@@ -30,7 +31,9 @@ const available = variant ? inStock(variant) : false
 const images: any[] = p.images?.length ? p.images : p.thumbnail ? [{ url: p.thumbnail }] : []
 const added = Astro.url.searchParams.get("added") === "1"
 const failed = Astro.url.searchParams.get("error")
-const description = (p.subtitle || p.description || "").slice(0, 160)
+const description = story?.description?.trim() || (p.subtitle || p.description || "").slice(0, 160)
+const fullTitle = story?.searchTitle?.trim() || undefined
+const canonical = story?.canonical?.trim() ? `${Astro.url.origin}/products/${encodeURIComponent(story.canonical.trim())}` : undefined
 const ld = productLd(p, { origin: Astro.url.origin, shop: shop.name, market: shop.market, sku: variant?.sku })
 const category = (p.categories ?? [])[0]
 const breadcrumbs = [
@@ -38,7 +41,7 @@ const breadcrumbs = [
   { name: p.title, path: `/products/${p.handle}` },
 ]
 ---
-<Shop title={p.title} description={description} image={images[0]?.url} noindex={r.preview} preview={r.preview} type="product" ld={[ld]} breadcrumbs={breadcrumbs}>
+<Shop title={p.title} fullTitle={fullTitle} canonical={canonical} description={description} image={images[0]?.url} noindex={r.preview} preview={r.preview} type="product" ld={[ld]} breadcrumbs={breadcrumbs}>
   <div class="product">
     <div class="gallery">
       {images.map((img, i) => {
