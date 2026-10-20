@@ -1,11 +1,15 @@
 // Staff are the business's own Whisk team. Whisk's edge tells the shop who is signed in to
 // Whisk (CONTRACT.md §4); a team member opening the shop's admin is given a Medusa user of
-// their own, made the first time, and signed in to it. Nobody has a password for the admin.
+// their own, made the first time, and signed in to it. Nobody has a password for the admin. An
+// agent acting for a team member uses the admin API as that member, without a session.
 import { Modules } from "@medusajs/framework/utils"
 import type { MedusaContainer } from "@medusajs/framework/types"
 import type { AuthContext } from "./accounts"
 
-export type Person = { id: string; email: string; name: string; audience: string; roles: string[] }
+// An agent is a coding agent reaching the shop as the person it acts for.
+export type Agent = { id: string; name: string }
+
+export type Person = { id: string; email: string; name: string; audience: string; roles: string[]; agent: Agent | null }
 
 const header = (h: Record<string, string | string[] | undefined>, name: string) => {
   const v = h[name]
@@ -18,6 +22,7 @@ export const personFrom = (h: Record<string, string | string[] | undefined>): Pe
   name: header(h, "x-whisk-name"),
   audience: header(h, "x-whisk-audience"),
   roles: header(h, "x-whisk-roles").split(",").map((r) => r.trim()).filter(Boolean),
+  agent: header(h, "x-whisk-agent") ? { id: header(h, "x-whisk-agent-id"), name: header(h, "x-whisk-agent") } : null,
 })
 
 // Who may run the shop: anyone on the business's team except a guest. Billing contacts and
@@ -60,3 +65,10 @@ export const adminReturn = (to: string) => (/^\/app(\/[^/\\]|\/?$|\?)/.test(to) 
 // one team member is no good once they sign out of Whisk, someone else signs in, or they leave
 // the team.
 export const sessionHolds = (whiskUserId: unknown, p: Person) => isStaff(p) && whiskUserId === p.id
+
+// Whether a request is an agent acting for a team member, which the admin API answers as that
+// member without a session. The edge sets the agent's headers only after checking the Whisk
+// credential in its Authorization header, which a browser never sends to another site by itself,
+// so no other page can make such a request for someone. A person's own browser has no agent
+// headers and still needs the session /auth/whisk makes.
+export const agentForStaff = (p: Person) => isStaff(p) && !!p.agent?.id

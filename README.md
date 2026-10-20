@@ -106,8 +106,10 @@ The live shop is a plain, tidy start. Ask your agent for the rest, in the same f
 
 > Point shop.example.com at this shop.
 
-Products, prices, stock, words and pictures are changed in the admin by anyone on the team; the
-look and new kinds of blocks are changed in the code, by the agent.
+Anyone on the team changes products, prices, stock, words and pictures in the admin. The agent
+can make the same changes for you through the admin's API at `/admin` on the shop's address,
+with its Whisk credential (`whisk call POST /admin/stores/<id> --data '{"name": "…"}'`), as the
+person it works for. The look and new kinds of blocks are changed in the code, by the agent.
 
 ## What Whisk is
 

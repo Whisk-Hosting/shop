@@ -1,17 +1,18 @@
 // What sits in front of Medusa's own routes:
-// - the admin API is for the business's Whisk team only, signed in through Whisk (/auth/whisk);
+// - the admin API is for the business's Whisk team only, signed in through Whisk (/auth/whisk),
+//   or an agent acting for one of them, which needs no session;
 // - password sign-ins are rate-limited, since Medusa does not limit them itself;
 // - /cms is the site editor (Payload, cms/), which runs beside Medusa (src/lib/cms.ts) and is
 //   shown inside the admin at /app; /cms/edit?path= opens it at the page with that path (the
 //   Whisk bar's Edit page);
 // - every other address is the storefront (Astro, storefront/): the website's pages, drawn from
 //   the CMS, and the shop's, drawn from Medusa, on one address.
-import { defineMiddlewares, type MedusaNextFunction, type MedusaRequest, type MedusaResponse } from "@medusajs/framework/http"
+import { ApiLoader, defineMiddlewares, type MedusaNextFunction, type MedusaRequest, type MedusaResponse } from "@medusajs/framework/http"
 import { createReadStream, promises as fs, readFileSync } from "node:fs"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { kv } from "../lib/kv"
-import { isStaff, personFrom, sessionHolds } from "../lib/staff"
+import { agentForStaff, isStaff, personFrom, sessionHolds, staffFor } from "../lib/staff"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { anyFilled, CMS, formFields, formName, formReturn, isMedusaPath, limitFor, redirectFor, shopAddress, staticFile, STOREFRONT, type Redirect } from "../lib/routes"
 import { requestHost, storefrontContext } from "../lib/shop"
@@ -42,6 +43,30 @@ const staffOnly = async (req: MedusaRequest, res: MedusaResponse, next: MedusaNe
   if (sessionHolds(context?.app_metadata?.whisk_user_id, personFrom(req.headers))) return next()
   await new Promise<void>((ok) => req.session.destroy(() => ok()))
   return refuse(res, 401, "AUTH_REQUIRED", "The shop's admin is for its team.", "Open /app while signed in to Whisk as a member of the business that runs this shop.")
+}
+
+// Medusa checks who is signed in to the admin API (a session, a token or a secret API key) before
+// any middleware of the shop's runs, and turns away a request with none. An agent acting for a
+// team member has none, so it is signed in here as that member, for this request only, in front
+// of Medusa's check. The check is reached through Medusa's hook for wrapping its middlewares,
+// which Medusa reads as it puts the API together, after loading this file.
+type Middleware = (req: MedusaRequest, res: MedusaResponse, next: MedusaNextFunction) => unknown
+const agentSignIn = (check: Middleware): Middleware =>
+  async function agentSignIn(req, res, next) {
+    const person = personFrom(req.headers)
+    if (!agentForStaff(person)) return check(req, res, next)
+    try {
+      ;(req as any).auth_context = await staffFor(req.scope, person)
+    } catch (e) {
+      return next(e)
+    }
+    next()
+  }
+
+const traced = ApiLoader.traceMiddleware
+ApiLoader.traceMiddleware = (handler, route) => {
+  const own = route.route === "/admin" && handler.name === "authMiddleware" ? (agentSignIn(handler as Middleware) as typeof handler) : handler
+  return traced ? traced(own, route) : own
 }
 
 // Password sign-in, sign-up and reset requests, counted per address and per network address.
