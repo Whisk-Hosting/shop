@@ -137,7 +137,8 @@ The business's Whisk team runs everything from one admin at `/app` with their Wh
 orders, products and customers, and beside them Pages, Product pages, Menu and Media, which open
 Payload's editor inside the admin. A page is a list of blocks (hero, text, picture, columns, list,
 products, form, HTML) at an address, a list block showing one of the shared lists
-(`cms/src/collections/Lists.ts`); drafts are seen only by the team, in a preview that follows
+(`cms/src/collections/Lists.ts`), and rich text holding pictures and callouts where they go
+(`cms/src/richtext.ts`); drafts are seen only by the team, in a preview that follows
 the edit. A product's page at `/products/<handle>` shows its live price, options and stock from
 Medusa, then the blocks of the product page with the same handle. A form block posts to
 `/forms/<name>`, kept in the database's `form_entries` table. A coding agent edits the pages
