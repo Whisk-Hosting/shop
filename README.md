@@ -185,7 +185,7 @@ src/modules/                Whisk storage and email, and the Windcave and PayPal
 src/subscribers/, src/jobs/ order and password emails
 storefront/                 every page: the website's blocks and the shop's pages
 cms/                        Payload: pages, product pages, menus, media, its migrations
-scripts/shop.mjs            build, start, migrate, dev
+scripts/shop.mjs            build, shop, start, migrate, dev
 ```
 
 ## Run it on your computer
