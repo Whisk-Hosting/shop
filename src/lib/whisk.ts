@@ -26,7 +26,6 @@ export class PlatformError extends Error {
   }
 }
 
-// The service token is read on every call, since it rotates.
 const platformCall = async <T>(method: string, path: string, waitMs: number, body?: unknown): Promise<T> => {
   const res = await fetch(platformUrl() + path, {
     method,
