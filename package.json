@@ -17,13 +17,13 @@
   },
   "dependencies": {
     "@astrojs/node": "11.1.7",
-    "@medusajs/admin-sdk": "2.21.2",
-    "@medusajs/caching-redis": "2.21.2",
-    "@medusajs/cli": "2.21.2",
-    "@medusajs/file-s3": "2.21.2",
-    "@medusajs/framework": "2.21.2",
-    "@medusajs/medusa": "2.21.2",
-    "@medusajs/payment-stripe": "2.21.2",
+    "@medusajs/admin-sdk": "2.22.2",
+    "@medusajs/caching-redis": "2.22.2",
+    "@medusajs/cli": "2.22.2",
+    "@medusajs/file-s3": "2.22.2",
+    "@medusajs/framework": "2.22.2",
+    "@medusajs/medusa": "2.22.2",
+    "@medusajs/payment-stripe": "2.22.2",
     "astro": "7.3.8",
     "ioredis": "5.11.1",
     "pg": "8.23.1"
@@ -41,13 +41,16 @@
     "ts-node": "10.9.2",
     "tsx": "4.23.15",
     "typescript": "5.9.3",
-    "vite": "7.3.6"
+    "vite": "7.3.7"
   },
   "overrides": {
     "lodash": "4.18.1",
-    "@hookform/resolvers": {
-      "ajv": "8.20.0"
-    },
-    "zod": "^4.6.6"
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "zod": "^4.6.6",
+    "@graphql-tools/utils": "^12.1.0",
+    "uuid": "^11.1.1",
+    "glob": "^14.0.3",
+    "minimatch": "^11.0.3"
   }
 }
