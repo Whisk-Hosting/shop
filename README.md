@@ -44,7 +44,7 @@ Give your coding agent (Claude Code, Codex, Cursor, Gemini CLI or any other) thi
 Or run it yourself:
 
 ```sh
-curl -fsSL https://whisk.run/install.sh | sh     # Windows: irm https://whisk.run/install.ps1 | iex
+curl -fsSL https://github.com/Whisk-Hosting/cli/releases/latest/download/install.sh | sh     # Windows: irm https://github.com/Whisk-Hosting/cli/releases/latest/download/install.ps1 | iex
 mkdir my-shop && cd my-shop
 whisk login
 whisk init --template shop
