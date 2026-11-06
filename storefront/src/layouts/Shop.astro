@@ -55,6 +55,7 @@ const q = Astro.url.searchParams.get("q") ?? ""
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{fullTitle}</title>
+    <script is:inline defer src="/.whisk/analytics.js"></script>
     {description && <meta name="description" content={description} />}
     <link rel="canonical" href={url} />
     {sameOnEverySite && !noindex && shop.alternates.map((a) => <link rel="alternate" hreflang={a.hreflang} href={a.origin + Astro.url.pathname} />)}
