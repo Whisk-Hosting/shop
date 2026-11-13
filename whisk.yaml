@@ -22,6 +22,9 @@ database: app
 migrate: "node migrate.js"
 
 kv: true
+# Medusa's event bus and workflow engine keep their jobs in the cache (BullMQ), so a full cache
+# refuses writes instead of dropping keys.
+kv_evict: false
 storage: true
 email: true
 
