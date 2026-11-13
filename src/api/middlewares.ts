@@ -8,22 +8,14 @@
 // - every other address is the storefront (Astro, storefront/): the website's pages, drawn from
 //   the CMS, and the shop's, drawn from Medusa, on one address.
 import { ApiLoader, defineMiddlewares, type MedusaNextFunction, type MedusaRequest, type MedusaResponse } from "@medusajs/framework/http"
-import { createReadStream, promises as fs, readFileSync } from "node:fs"
-import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { kv } from "../lib/kv"
-import { agentForStaff, isStaff, personFrom, sessionHolds, staffFor } from "../lib/staff"
+import { agentForStaff, personFrom, sessionHolds, staffFor } from "../lib/staff"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
-import { anyFilled, CMS, formFields, formName, formReturn, isMedusaPath, limitFor, redirectFor, shopAddress, staticFile, STOREFRONT, type Redirect } from "../lib/routes"
+import { anyFilled, CMS, formFields, formName, formReturn, isMedusaPath, limitFor, STOREFRONT } from "../lib/routes"
 import { requestHost, storefrontContext } from "../lib/shop"
-import { marketFor, marketsFrom } from "../lib/market"
-
-// The market whose site a request was made to, in a shop that sells in several.
-const siteMarket = (headers: Record<string, string | string[] | undefined>) => {
-  const markets = marketsFrom(process.env)
-  return markets.length > 1 ? marketFor(markets, requestHost(headers)).key : null
-}
-import { editorFor, editPath, editQuery, findForEdit, insideAdmin, isEditLink, isEditorPage, proxy, startCms } from "../lib/cms"
+import { cmsRequest, sendRedirect, sendStatic, storefrontServer } from "../lib/pages"
+import { startCms } from "../lib/cms"
 
 // The CMS starts with the shop's server, not with its other commands (migrate, exec).
 if (process.argv.includes("start") || process.argv.includes("develop")) startCms()
@@ -89,71 +81,12 @@ const rateLimited = async (req: MedusaRequest, res: MedusaResponse, next: Medusa
 }
 
 let astro: Promise<{ handler: (req: unknown, res: unknown, next: unknown, locals?: unknown) => unknown }> | undefined
-const storefrontEntry = () =>
-  (astro ??= import(pathToFileURL(path.resolve(process.cwd(), "storefront/dist/server/entry.mjs")).href))
+const storefrontEntry = () => (astro ??= import(pathToFileURL(storefrontServer()).href))
 
-const storefrontRoot = () => path.resolve(process.cwd(), "storefront/dist/client")
-
-// A built file of the storefront's, if the path names one; false when it does not.
-const sendStatic = async (req: MedusaRequest, res: MedusaResponse, pathname: string): Promise<boolean> => {
-  if (req.method !== "GET" && req.method !== "HEAD") return false
-  const found = staticFile(storefrontRoot(), pathname)
-  if (!found) return false
-  const stat = await fs.stat(found.file).catch(() => null)
-  if (!stat?.isFile()) return false
-  res.status(200).set({ "content-type": found.type, "content-length": String(stat.size), "cache-control": found.cache })
-  if (req.method === "HEAD") {
-    res.end()
-    return true
-  }
-  await new Promise<void>((ok, fail) => createReadStream(found.file).on("error", fail).on("end", ok).pipe(res))
-  return true
-}
-
-// The old addresses of a moved website (redirects.json, written by the mover): each answers with
-// one hop to where it went, or 410 for a page that is gone.
-let redirects: Redirect[] | undefined
-const oldAddresses = (): Redirect[] =>
-  (redirects ??= (() => {
-    try {
-      const list = JSON.parse(readFileSync(path.resolve(process.cwd(), "redirects.json"), "utf8"))
-      return Array.isArray(list) ? list : []
-    } catch {
-      return []
-    }
-  })())
-
-// Then a shop page asked for at its other address (src/lib/routes.ts, shopAddress) is sent to its
-// own, so each page is listed once.
-const sendRedirect = (req: MedusaRequest, res: MedusaResponse, pathname: string): boolean => {
-  if (req.method !== "GET" && req.method !== "HEAD") return false
-  const search = req.originalUrl.includes("?") ? req.originalUrl.slice(req.originalUrl.indexOf("?")) : ""
-  const own = shopAddress(pathname)
-  const moved = redirectFor(oldAddresses(), pathname, search) ?? (own ? { status: 301, location: own + search } : null)
-  if (!moved) return false
-  res.status(moved.status).set({ "cache-control": "public, max-age=300", ...(moved.location ? { location: moved.location } : { "content-type": "text/plain; charset=utf-8" }) })
-  res.end(moved.location ? undefined : "This page has been removed.")
-  return true
-}
-
-// The site editor and its API. Its pages are for the business's team, inside the shop's admin:
-// anyone else is sent to sign in to Whisk, and the team opening /cms on its own is taken to the
-// admin's section for it. Its API decides for itself (cms/src/access.ts).
+// The site editor (src/lib/pages.ts); this request's own session is left alone.
 const cms = async (req: MedusaRequest, res: MedusaResponse) => {
-  const url = req.originalUrl
-  const pathname = url.split("?")[0]
-  if (isEditLink(pathname)) {
-    if (!isStaff(personFrom(req.headers))) return res.redirect(302, `/.whisk/login?return=${encodeURIComponent(url)}`)
-    const { collection, query } = editQuery(editPath(url.slice(pathname.length)))
-    res.set("cache-control", "no-store")
-    return res.redirect(302, editorFor(collection, await findForEdit(req.headers, collection, query, siteMarket(req.headers))))
-  }
-  if (isEditorPage(pathname)) {
-    if (!isStaff(personFrom(req.headers))) return res.redirect(302, `/.whisk/login?return=${encodeURIComponent(insideAdmin(url))}`)
-    if (req.headers["sec-fetch-dest"] === "document") return res.redirect(302, insideAdmin(url))
-  }
   ;(req as any).session = null
-  await proxy(req, res, url)
+  await cmsRequest(req, res, req.originalUrl)
 }
 
 // The body of a form post, up to 64 KB, read within ten seconds.
@@ -206,7 +139,7 @@ const storefront = async (req: MedusaRequest, res: MedusaResponse, next: MedusaN
   ;(req as any).session = null
   const form = formName(pathname)
   if (form && req.method === "POST") return formPost(req, res, form).catch(next)
-  if (sendRedirect(req, res, pathname)) return
+  if (sendRedirect(req, res, req.originalUrl)) return
   if (await sendStatic(req, res, pathname)) return
   const [{ handler }, shop] = await Promise.all([storefrontEntry(), storefrontContext(req.scope, requestHost(req.headers))])
   return handler(req, res, next, { shop })

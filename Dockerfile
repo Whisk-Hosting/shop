@@ -4,6 +4,11 @@
 # private @whisk/shop-b2b plugin for a Promoted app whose whisk.yaml says b2b: true.
 FROM scratch AS whisk-shop-b2b
 
+# Whisk's own server for the shop's API: empty here, so Medusa answers it. Whisk fills this stage
+# with its server (one file, engine) for the shops it runs on it, and the image starts it in
+# Medusa's place (start.ts).
+FROM scratch AS whisk-commerce-engine
+
 # The site editor, a Next.js app that takes minutes to build, in a stage that reads only cms/: a
 # change to the shop or the storefront leaves it as it was, and the builder reuses it.
 FROM node:24-trixie-slim AS cms
@@ -47,9 +52,10 @@ ENV NODE_ENV=production
 ENV XDG_CONFIG_HOME=/tmp
 WORKDIR /app
 COPY --from=build /app/.medusa/server ./
+COPY --from=whisk-commerce-engine / ./
 USER nonroot
 EXPOSE 8080
 # The Sentry and OpenTelemetry SDKs add about 100 MB to a process, and this app already needs
 # most of its memory for the processes it runs.
 # doctor: allow W140 W141 too big for the SDKs
-CMD ["node_modules/@medusajs/cli/cli.js", "start"]
+CMD ["start.js"]

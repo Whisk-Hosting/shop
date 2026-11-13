@@ -5,6 +5,7 @@
 // they sign nothing here.
 // The starting catalogue is added by a job (src/jobs/catalogue.ts), which has the storage.
 import { spawnSync } from "node:child_process"
+import { existsSync } from "node:fs"
 import path from "node:path"
 
 const env = { ...process.env, SHOP_STEP: "migrate", CMS_STEP: "migrate" }
@@ -12,11 +13,19 @@ const run = (args: string[], cwd = process.cwd()) => {
   const r = spawnSync(process.execPath, args, { stdio: "inherit", env, cwd })
   if (r.status !== 0) process.exit(r.status ?? 1)
 }
-const medusa = require.resolve("@medusajs/cli/cli.js")
 const cms = path.resolve("cms")
 
-run([medusa, "db:migrate"])
-run([medusa, "exec", "./src/scripts/setup.js"])
+// Whisk's own server for the shop's API, when the build added it (start.ts), migrates and sets
+// up the shop itself; otherwise Medusa does.
+const engine = path.resolve(__dirname, "engine")
+if (existsSync(engine)) {
+  const r = spawnSync(engine, ["migrate"], { stdio: "inherit", env })
+  if (r.status !== 0) process.exit(r.status ?? 1)
+} else {
+  const medusa = require.resolve("@medusajs/cli/cli.js")
+  run([medusa, "db:migrate"])
+  run([medusa, "exec", "./src/scripts/setup.js"])
+}
 // Payload's command loads its TypeScript config through a loader thread, and now and then the
 // process runs out of work before the config arrives: it exits 0 having migrated nothing. A
 // process that ends that way (beforeExit) exits STALLED instead, and is run again.

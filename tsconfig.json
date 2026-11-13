@@ -20,6 +20,6 @@
     "strict": true
   },
   "ts-node": { "swc": true },
-  "include": ["src/**/*", "medusa-config.ts", "migrate.ts", "test/**/*", ".medusa/types/*"],
+  "include": ["src/**/*", "medusa-config.ts", "migrate.ts", "start.ts", "test/**/*", ".medusa/types/*"],
   "exclude": ["node_modules", ".medusa/server", ".medusa/admin", ".cache", "storefront"]
 }
