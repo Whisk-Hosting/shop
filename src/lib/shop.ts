@@ -54,6 +54,7 @@ export type StorefrontContext = {
   providers: string[]
   market: Market
   alternates: { hreflang: string; origin: string }[] // the shop's sites in its other markets (src/lib/market.ts)
+  app?: string // the app the storefront names to an engine its server shares among shops (src/lib/front.ts)
 }
 
 const contexts = new Map<string, { value: StorefrontContext; at: number }>()

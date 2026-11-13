@@ -1,13 +1,17 @@
-// The shop's front, when Whisk's own server answers the shop's API (start.ts): the storefront,
-// its built files, a moved website's old addresses and the site editor, on a port of the app's
-// own that only that server reaches. That server answers the API, the admin's pages and the
-// website's forms itself and passes every other request here, with the storefront's context
-// (src/lib/front.ts). Nothing here loads Medusa.
+// The shop's front, when Whisk's commerce server answers the shop's API: the storefront, its
+// built files, a moved website's old addresses and the site editor. Nothing here loads Medusa.
+//
+// The server is either the one the app's machine shares among its shops (WHISK_COMMERCE_URL): the
+// edge then sends the API and the website's forms there and everything else here, on the app's
+// own port, and this front asks the server for the storefront's context itself, as the app; or
+// one beside this front on the same machine (`engine serve`, on a laptop), which passes every
+// request that is not the API here with the storefront's context.
 import http from "node:http"
 import { pathToFileURL } from "node:url"
-import { storefrontFrom, STOREFRONT_HEADER } from "./lib/front"
-import { cmsRequest, sendRedirect, sendStatic, storefrontServer } from "./lib/pages"
+import { engineContext, SHOP_APP_HEADER, storefrontFrom, STOREFRONT_HEADER } from "./lib/front"
+import { cmsRequest, sendAdmin, sendRedirect, sendStatic, siteHost, storefrontServer } from "./lib/pages"
 import { CMS } from "./lib/routes"
+import type { StorefrontContext } from "./lib/shop"
 
 type Astro = { handler: (req: unknown, res: unknown, next: (e?: unknown) => void, locals?: unknown) => unknown }
 let astro: Promise<Astro> | undefined
@@ -19,14 +23,45 @@ const answer = (res: http.ServerResponse, status: number, code: string, message:
   res.end(JSON.stringify({ error: { code, message, fix } }))
 }
 
-export const handle = async (req: http.IncomingMessage, res: http.ServerResponse) => {
+// The shared engine's answers, kept half a minute per site: the engine reads its own once a minute.
+const asked = new Map<string, { value: StorefrontContext; at: number }>()
+
+// The storefront's context from the engine the app's server shares among its shops, for the site
+// the visitor asked for; null when the engine does not give one.
+const fromEngine = async (engine: string, req: http.IncomingMessage): Promise<StorefrontContext | null> => {
+  const host = siteHost(req.headers) ?? ""
+  const hit = asked.get(host)
+  if (hit && Date.now() - hit.at < 30_000) return hit.value
+  const app = process.env.WHISK_APP_ID ?? ""
+  try {
+    const res = await fetch(`${engine.replace(/\/+$/, "")}/whisk-engine/storefront?host=${encodeURIComponent(host)}`, {
+      headers: { accept: "application/json", [SHOP_APP_HEADER]: app },
+      signal: AbortSignal.timeout(5_000),
+    })
+    const value = res.ok ? engineContext(await res.json(), engine, app) : null
+    if (!value) console.error(`front: the commerce engine gave no storefront context (${res.status})`)
+    if (value) asked.set(host, { value, at: Date.now() })
+    return value
+  } catch (e) {
+    console.error("front: the commerce engine did not answer", e)
+    return hit?.value ?? null
+  }
+}
+
+export const handle = async (req: http.IncomingMessage, res: http.ServerResponse, engine = process.env.WHISK_COMMERCE_URL) => {
   const url = req.url ?? "/"
   const pathname = url.split("?")[0]
-  const shop = storefrontFrom(req.headers[STOREFRONT_HEADER])
+  const sent = engine ? null : storefrontFrom(req.headers[STOREFRONT_HEADER])
   delete req.headers[STOREFRONT_HEADER]
+  if (engine && pathname === "/health/ready") {
+    res.writeHead(200, { "content-type": "text/plain; charset=utf-8" })
+    return res.end("OK")
+  }
   if (CMS.test(pathname)) return cmsRequest(req, res, url)
   if (sendRedirect(req, res, url)) return
   if (await sendStatic(req, res, pathname)) return
+  if (engine && (await sendAdmin(req, res, pathname))) return
+  const shop = engine ? await fromEngine(engine, req) : sent
   if (!shop) return answer(res, 503, "SHOP_FRONT_UNAVAILABLE", "The shop's pages cannot be shown right now.", "Try again in a few seconds.")
   const { handler } = await storefront()
   await handler(req, res, (e?: unknown) => {
@@ -35,8 +70,9 @@ export const handle = async (req: http.IncomingMessage, res: http.ServerResponse
   }, { shop })
 }
 
-// startFront serves the front on the port, on this machine only.
-export const startFront = (port: number) => {
+// startFront serves the front on the port: on this machine only beside an engine inside the app,
+// or on every address of the app's when the edge reaches it directly.
+export const startFront = (port: number, address = "127.0.0.1") => {
   const server = http.createServer((req, res) => {
     handle(req, res).catch((e) => {
       console.error("front:", e)
@@ -44,6 +80,6 @@ export const startFront = (port: number) => {
     })
   })
   server.headersTimeout = 10_000
-  server.listen(port, "127.0.0.1")
+  server.listen(port, address)
   return server
 }

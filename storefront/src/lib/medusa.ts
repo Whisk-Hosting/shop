@@ -17,6 +17,7 @@ export type ShopContext = {
   providers: string[] // payment providers the region takes and the server has loaded
   market: { key: string; country: string; currency: string; name: string; locale: string; timeZone: string; taxRate: number; taxName: string; taxInclusive: boolean; host: string | null } // src/lib/market.ts
   alternates: { hreflang: string; origin: string }[] // the shop's sites in its markets, when it sells in several
+  app?: string // named to Whisk's commerce engine when the server shares it among shops (src/lib/front.ts)
 }
 
 export class ApiError extends Error {
@@ -50,6 +51,7 @@ export const api = (shop: ShopContext, request: Request, call: Call = { setCooki
     const forwarded = request.headers.get("x-forwarded-for")
     if (forwarded) headers["x-forwarded-for"] = forwarded
     if (bearer) headers.authorization = `Bearer ${bearer}`
+    if (shop.app) headers["x-whisk-shop-app"] = shop.app
     if (body !== undefined) headers["content-type"] = "application/json"
     const res = await fetch(shop.api + path, {
       method,

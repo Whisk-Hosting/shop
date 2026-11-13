@@ -16,12 +16,17 @@ type Res = http.ServerResponse
 export const storefrontServer = (cwd = process.cwd()) => path.resolve(cwd, "storefront/dist/server/entry.mjs")
 export const storefrontRoot = (cwd = process.cwd()) => path.resolve(cwd, "storefront/dist/client")
 
+// The site a request was made to: the host the edge says the visitor asked for.
+export const siteHost = (headers: http.IncomingHttpHeaders): string | null => {
+  const h = headers["x-forwarded-host"] ?? headers.host
+  return (Array.isArray(h) ? h[0] : h)?.split(",")[0]?.trim() || null
+}
+
 // The market whose site a request was made to, in a shop that sells in several.
 export const siteMarket = (headers: http.IncomingHttpHeaders) => {
   const markets = marketsFrom(process.env)
   if (markets.length < 2) return null
-  const h = headers["x-forwarded-host"] ?? headers.host
-  return marketFor(markets, (Array.isArray(h) ? h[0] : h)?.split(",")[0]?.trim() || null).key
+  return marketFor(markets, siteHost(headers)).key
 }
 
 const redirect = (res: Res, status: number, location: string, headers: Record<string, string> = {}) => {
@@ -42,6 +47,42 @@ export const sendStatic = async (req: Req, res: Res, pathname: string, root = st
     return true
   }
   await new Promise<void>((ok, fail) => createReadStream(found.file).on("error", fail).on("end", ok).pipe(res))
+  return true
+}
+
+// The admin's built pages (public/admin), as Medusa serves them: a built file as it is, kept for
+// a year since a new build names its files anew, and the admin's page for any other address
+// under /app, never kept, so a new build shows at once. Served here when Whisk's commerce engine
+// runs apart from the app and the app keeps its admin's pages.
+export const adminRoot = (cwd = process.cwd()) => path.resolve(cwd, "public/admin")
+
+// The file under the admin's build an address names, when it names one plainly: no dot
+// segments, hidden names or backslashes. Pure.
+export const adminFile = (pathname: string): string | null => {
+  const rest = pathname.replace(/^\/app/, "").replace(/^\//, "")
+  if (!rest || rest === "index.html" || /[\\\0]/.test(rest)) return null
+  return rest.split("/").every((part) => part !== "" && !part.startsWith(".")) ? rest : null
+}
+
+export const sendAdmin = async (req: Req, res: Res, pathname: string, root = adminRoot()): Promise<boolean> => {
+  if (!/^\/app(\/|$)/.test(pathname)) return false
+  if (req.method !== "GET" && req.method !== "HEAD") return false
+  const file = adminFile(pathname)
+  const found = file ? staticFile(root, "/" + file) : null
+  const stat = found ? await fs.stat(found.file).catch(() => null) : null
+  if (found && stat?.isFile()) {
+    res.writeHead(200, { "content-type": found.type, "content-length": String(stat.size), "cache-control": "max-age=31536000, immutable", vary: "Origin, Cache-Control" })
+    if (req.method === "HEAD") {
+      res.end()
+      return true
+    }
+    await new Promise<void>((ok, fail) => createReadStream(found.file).on("error", fail).on("end", ok).pipe(res))
+    return true
+  }
+  const page = await fs.readFile(path.join(root, "index.html")).catch(() => null)
+  if (!page) return false
+  res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache", vary: "Origin, Cache-Control" })
+  res.end(req.method === "HEAD" ? undefined : page)
   return true
 }
 

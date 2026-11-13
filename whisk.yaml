@@ -18,6 +18,11 @@ health:
   path: /health/ready
   timeout: 60
 
+# The shop's API is Medusa's (/store, /admin, /auth, /hooks). Whisk may answer it with its own
+# commerce server, with the same answers on the same database, and this app then serves the
+# shop's pages alone (start.ts).
+commerce: medusa
+
 database: app
 migrate: "node migrate.js"
 
