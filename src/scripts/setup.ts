@@ -3,13 +3,14 @@
 // migrations (migrate.ts) and only adds what is missing, so staff changes in the admin are never
 // undone. Each market gets: its currency, with tax included in prices or added on top as the
 // market says; a region with the market's tax; a sales channel (metadata.market names the
-// market) and the storefront key for it; a stock location; standard delivery that staff change in
-// the admin; and every payment provider whose keys are set (bank transfer always). The shop gets
+// market) and the storefront key for it; a stock location with a delivery zone for the market's
+// country, to which the business adds its own delivery options and prices (no price is assumed:
+// checkout stays closed until it has, src/lib/shop-setup.ts); and every payment provider whose keys are set (bank transfer always). The shop gets
 // the tables for its own secrets and the website's forms.
 import type { ExecArgs, MedusaContainer } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import {
-  createApiKeysWorkflow, createRegionsWorkflow, createSalesChannelsWorkflow, createShippingOptionsWorkflow,
+  createApiKeysWorkflow, createRegionsWorkflow, createSalesChannelsWorkflow,
   createShippingProfilesWorkflow, createStockLocationsWorkflow, createTaxRegionsWorkflow, linkSalesChannelsToApiKeyWorkflow,
   linkSalesChannelsToStockLocationWorkflow, updateRegionsWorkflow, updateSalesChannelsWorkflow, updateStoresWorkflow,
 } from "@medusajs/medusa/core-flows"
@@ -151,7 +152,7 @@ const setupMarket = async (
     logger.info(`setup: made the ${market.name} stock location`)
   }
 
-  // Delivery from the location: one zone (the market's country), standard delivery.
+  // Delivery from the location: one zone (the market's country), with no options in it yet.
   if (!location.fulfillment_sets?.length) {
     const made = await fulfillment.createFulfillmentSets({
       name: `Delivery (${market.name})`,
@@ -159,24 +160,7 @@ const setupMarket = async (
       service_zones: [{ name: market.name, geo_zones: [{ country_code: market.country, type: "country" }] }],
     })
     await link.create({ [Modules.STOCK_LOCATION]: { stock_location_id: location.id }, [Modules.FULFILLMENT]: { fulfillment_set_id: made.id } })
-    await createShippingOptionsWorkflow(container).run({
-      input: [
-        {
-          name: "Standard delivery",
-          price_type: "flat",
-          provider_id: "manual_manual",
-          service_zone_id: made.service_zones[0].id,
-          shipping_profile_id: ctx.profileId,
-          type: { label: "Standard", description: "Delivered in 1 to 5 working days.", code: "standard" },
-          prices: [{ currency_code: market.currency, amount: market.delivery }, { region_id: region.id, amount: market.delivery }],
-          rules: [
-            { attribute: "enabled_in_store", value: "true", operator: "eq" },
-            { attribute: "is_return", value: "false", operator: "eq" },
-          ],
-        },
-      ],
-    })
-    logger.info(`setup: standard delivery across ${market.name}`)
+    logger.info(`setup: a delivery zone across ${market.name}, for the business's own delivery options`)
   }
 
   // The key the storefront sends with every store request in this market.

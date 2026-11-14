@@ -52,3 +52,13 @@ export const sessionHolds = (whiskUserId: unknown, p: Person) => isStaff(p) && w
 // so no other page can make such a request for someone. A person's own browser has no agent
 // headers and still needs the session /auth/whisk makes.
 export const agentForStaff = (p: Person) => isStaff(p) && !!p.agent?.id
+
+// The shop's setup list, the manifest's admin.setup, which the Whisk bar reads for a team member
+// to say whether the shop still needs something (CADDY.md §5.7).
+export const SETUP_PATH = "/admin/whisk/setup"
+
+// Whether the admin API answers the request as the team member Whisk says is here without a
+// session: an agent for a member, or a member reading the setup list, which changes nothing and
+// is read by the Whisk bar before they have opened the admin.
+export const sessionless = (p: Person, method: string, path: string) =>
+  agentForStaff(p) || (isStaff(p) && method === "GET" && path === SETUP_PATH)

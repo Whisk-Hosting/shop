@@ -3,7 +3,7 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import path from "node:path"
 import { ApiLoader } from "@medusajs/framework/http"
-import { agentForStaff, personFrom } from "../src/lib/staff"
+import { agentForStaff, personFrom, SETUP_PATH } from "../src/lib/staff"
 import "../src/api/middlewares"
 
 const team = { "x-whisk-audience": "team", "x-whisk-roles": "owner", "x-whisk-user-id": "u1", "x-whisk-email": "Ann@b.com", "x-whisk-name": "Ann Lee" }
@@ -40,10 +40,10 @@ const check = Object.defineProperty(
   { value: "authMiddleware" },
 )
 
-const run = (headers: Record<string, string>, route = "/admin") =>
+const run = (headers: Record<string, string>, route = "/admin", method = "GET", url = "/admin/products") =>
   new Promise<{ req: any; res: { status: number }; error: unknown }>((done) => {
     const wrapped = ApiLoader.traceMiddleware!(check as any, { route }) as any
-    const req: any = { headers, scope }
+    const req: any = { headers, scope, method, originalUrl: url }
     const res = { status: 200 }
     let finished = false
     const end = (error?: unknown) => {
@@ -69,6 +69,19 @@ test("anyone else meets Medusa's own check", async () => {
   }
   const other = await run({ ...team, ...agent }, "/store")
   assert.equal(other.res.status, 401)
+})
+
+test("a member's browser reads the setup list without a session, and nothing else", async () => {
+  const read = await run(team, "/admin", "GET", SETUP_PATH + "?x=1")
+  assert.equal(read.res.status, 200)
+  assert.equal(read.req.auth_context?.actor_id, "user_1")
+  for (const [method, url] of [["POST", SETUP_PATH], ["GET", "/admin/orders"], ["GET", SETUP_PATH + "/x"]]) {
+    const { res, req } = await run(team, "/admin", method, url)
+    assert.equal(res.status, 401, `${method} ${url}`)
+    assert.equal(req.auth_context, undefined)
+  }
+  const guest = await run({ ...team, "x-whisk-roles": "guest" }, "/admin", "GET", SETUP_PATH)
+  assert.equal(guest.res.status, 401)
 })
 
 // The wrap finds Medusa's check by its name and prefix; this fails when an upgrade renames it.

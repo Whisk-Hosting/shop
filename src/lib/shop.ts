@@ -6,6 +6,7 @@ import { browserKeysFrom } from "./settings"
 import { alternatesOf, marketFor, marketOfChannel, marketsFrom, marketUrl, type Market } from "./market"
 import { linkedTo } from "./setup"
 import { cmsAddress } from "./cms"
+import { openForOrders, setupOf, undeliveredMarkets, type Facts } from "./shop-setup"
 
 let cached: { name: string; channels: { id: string; metadata?: Record<string, unknown> | null }[]; at: number } | undefined
 
@@ -52,12 +53,31 @@ export type StorefrontContext = {
   stripeTestKey: string | null
   paypalClientId: string | null
   providers: string[]
+  open: boolean // whether checkout takes orders: the shop's setup is done (src/lib/shop-setup.ts)
   market: Market
   alternates: { hreflang: string; origin: string }[] // the shop's sites in its other markets (src/lib/market.ts)
   app?: string // the app the storefront names to an engine its server shares among shops (src/lib/front.ts)
 }
 
 const contexts = new Map<string, { value: StorefrontContext; at: number }>()
+
+// What the setup check reads from the shop's records (src/lib/shop-setup.ts).
+export const setupFacts = async (scope: MedusaContainer): Promise<Facts> => {
+  const { data } = await scope.resolve(ContainerRegistrationKeys.QUERY).graph({
+    entity: "shipping_option",
+    fields: ["id", "rules.attribute", "rules.value", "service_zone.geo_zones.country_code"],
+  })
+  return { undelivered: undeliveredMarkets(marketsFrom(process.env), data as any[]) }
+}
+
+// The shop's setup: what it still needs, and whether checkout is open.
+export const shopSetup = async (scope: MedusaContainer) => {
+  const [stores, facts] = await Promise.all([scope.resolve(Modules.STORE).listStores({}, { take: 1 }), setupFacts(scope)])
+  return { metadata: stores[0]?.metadata ?? null, setup: setupOf(stores[0]?.metadata, process.env, facts) }
+}
+
+// Forgets the contexts read, so a change to the shop's details shows on the next request.
+export const forgetContexts = () => contexts.clear()
 
 // What the storefront needs to know about the shop on every request (storefront/src/lib/medusa.ts),
 // for the market of the domain asked for (src/lib/market.ts), read once a minute per market: where
@@ -70,12 +90,13 @@ export const storefrontContext = async (scope: MedusaContainer, host?: string | 
   const hit = contexts.get(market.key)
   if (hit && Date.now() - hit.at < 60_000) return hit.value
   const query = scope.resolve(ContainerRegistrationKeys.QUERY)
-  const [{ data: stores }, { data: channels }, { data: keys }, { data: regions }, enabled] = await Promise.all([
+  const [{ data: stores }, { data: channels }, { data: keys }, { data: regions }, enabled, facts] = await Promise.all([
     query.graph({ entity: "store", fields: ["name", "metadata", "default_sales_channel_id"], pagination: { take: 1 } }),
     query.graph({ entity: "sales_channel", fields: ["id", "metadata"] }),
     query.graph({ entity: "api_key", fields: ["token", "revoked_at", "created_at", "sales_channels.id"], filters: { type: "publishable" } }),
     query.graph({ entity: "region", fields: ["id", "currency_code", "created_at", "payment_providers.id"], filters: { currency_code: market.currency } }),
     scope.resolve(Modules.PAYMENT).listPaymentProviders({ is_enabled: true }),
+    setupFacts(scope),
   ])
   const store = (stores as any[])[0]
   // The market's sales channel; a one-market shop's is the store's own.
@@ -97,6 +118,7 @@ export const storefrontContext = async (scope: MedusaContainer, host?: string | 
     stripeTestKey: browserKeysFrom(process.env).stripeTest,
     paypalClientId: browserKeysFrom(process.env).paypal,
     providers: (region.payment_providers ?? []).map((p: { id: string }) => p.id).filter((id: string) => loaded.has(id)),
+    open: openForOrders(store?.metadata, process.env, facts),
     market,
     alternates: alternatesOf(markets),
   }

@@ -3,9 +3,11 @@
 // sends nothing more.
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import type { MedusaContainer } from "@medusajs/framework/types"
-import { adminOrderUrl, bankAccountOf, displayId, ORDER_FIELDS, orderView, staffAddresses, type OrderLike } from "./orders"
-import { shopInfo } from "./shop"
+import { adminOrderUrl, bankAccountOf, displayId, ORDER_FIELDS, orderView, type OrderLike } from "./orders"
+import { shopInfo, shopInfoAt } from "./shop"
 import { marketSetting } from "./market"
+import { enquiriesTo, ordersTo, valuesOf } from "./shop-setup"
+import { enquiryView, replyToOf } from "./enquiries"
 
 const orderOf = async (scope: MedusaContainer, id: string): Promise<OrderLike | null> => {
   const { data } = await scope.resolve(ContainerRegistrationKeys.QUERY).graph({ entity: "order", fields: ORDER_FIELDS, filters: { id } })
@@ -17,18 +19,35 @@ const orderOf = async (scope: MedusaContainer, id: string): Promise<OrderLike | 
 const send = (scope: MedusaContainer, to: string, template: string, data: Record<string, unknown>, key: string) =>
   scope.resolve(Modules.NOTIFICATION).createNotifications({ to, channel: "email", template, data, idempotency_key: key })
 
-// The customer's confirmation, and the business's own copy to each address in SHOP_ORDERS_TO.
+const storeMetadata = async (scope: MedusaContainer) => (await scope.resolve(Modules.STORE).listStores({}, { take: 1 }))[0]?.metadata
+
+// A customer's reply to the shop's email reaches the business: the first enquiries address
+// (data.replyTo, src/modules/whisk-email).
+const replyTo = (metadata: Record<string, unknown> | null | undefined) => {
+  const [to] = enquiriesTo(metadata)
+  return to ? { replyTo: to } : {}
+}
+
+const businessOf = (metadata: Record<string, unknown> | null | undefined) => {
+  const v = valuesOf(metadata)
+  return v.business_name ? { name: v.business_name, gstNumber: v.gst_number, phone: v.business_phone, address: v.business_address } : null
+}
+
+// The customer's confirmation, and the business's own copy to each address it gave for orders
+// (src/lib/shop-setup.ts, ordersTo), and the market's SHOP_ORDERS_TO_AU or SHOP_ORDERS_TO.
 // One failed send does not stop the others; the first failure is thrown for the sweep to log.
 export const sendOrderPlaced = async (scope: MedusaContainer, orderId: string) => {
   const order = await orderOf(scope, orderId)
   if (!order) return
   const [store] = await scope.resolve(Modules.STORE).listStores({}, { take: 1 })
   const shop = await shopInfo(scope, order.sales_channel_id)
-  const view = orderView(order, shop, bankAccountOf(store?.metadata))
+  const view = { ...orderView(order, shop, bankAccountOf(store?.metadata)), business: businessOf(store?.metadata) }
   const staff = { ...view, adminUrl: adminOrderUrl(view.shopUrl, order.id) }
   const sends = [
-    ...(order.email ? [send(scope, order.email, "orderPlaced", { ...view, market: shop.market.key }, `order-placed:${order.id}`)] : []),
-    ...staffAddresses(marketSetting(process.env, "SHOP_ORDERS_TO", shop.market)).map((to) => send(scope, to, "newOrder", { ...staff, market: shop.market.key }, `order-placed-staff:${order.id}:${to}`)),
+    ...(order.email ? [send(scope, order.email, "orderPlaced", { ...view, market: shop.market.key, ...replyTo(store?.metadata) }, `order-placed:${order.id}`)] : []),
+    ...ordersTo(store?.metadata, process.env, marketSetting(process.env, "SHOP_ORDERS_TO", shop.market)).map((to) =>
+      send(scope, to, "newOrder", { ...staff, market: shop.market.key, ...(order.email ? { replyTo: order.email } : {}) }, `order-placed-staff:${order.id}:${to}`),
+    ),
   ]
   const failed = (await Promise.allSettled(sends)).find((r): r is PromiseRejectedResult => r.status === "rejected")
   if (failed) throw failed.reason
@@ -38,7 +57,7 @@ export const sendOrderCanceled = async (scope: MedusaContainer, orderId: string)
   const order = await orderOf(scope, orderId)
   if (!order?.email) return
   const shop = await shopInfo(scope, order.sales_channel_id)
-  await send(scope, order.email, "orderCanceled", { shop: shop.name, shopUrl: shop.url, market: shop.market.key, displayId: displayId(order) }, `order-canceled:${order.id}`)
+  await send(scope, order.email, "orderCanceled", { shop: shop.name, shopUrl: shop.url, market: shop.market.key, displayId: displayId(order), ...replyTo(await storeMetadata(scope)) }, `order-canceled:${order.id}`)
 }
 
 export const sendShipped = async (scope: MedusaContainer, fulfillmentId: string) => {
@@ -52,7 +71,7 @@ export const sendShipped = async (scope: MedusaContainer, fulfillmentId: string)
   if (!f?.order?.email) return
   const shop = await shopInfo(scope, f.order.sales_channel_id)
   const tracking = (f.labels ?? []).map((l: any) => ({ number: l.tracking_number ?? "", url: l.tracking_url && /^https:\/\//.test(l.tracking_url) ? l.tracking_url : null }))
-  await send(scope, f.order.email, "orderShipped", { shop: shop.name, shopUrl: shop.url, market: shop.market.key, displayId: displayId(f.order), tracking }, `shipped:${f.id}`)
+  await send(scope, f.order.email, "orderShipped", { shop: shop.name, shopUrl: shop.url, market: shop.market.key, displayId: displayId(f.order), tracking, ...replyTo(await storeMetadata(scope)) }, `shipped:${f.id}`)
 }
 
 // payment.refunded names the payment; the refund it is about is that payment's newest.
@@ -70,7 +89,22 @@ export const sendRefunded = async (scope: MedusaContainer, paymentId: string) =>
   const shop = await shopInfo(scope, order.sales_channel_id)
   await send(
     scope, order.email, "refunded",
-    { shop: shop.name, shopUrl: shop.url, market: shop.market.key, displayId: displayId(order), amount: Number(refund.amount?.numeric ?? refund.amount), currency: p.currency_code },
+    { shop: shop.name, shopUrl: shop.url, market: shop.market.key, displayId: displayId(order), amount: Number(refund.amount?.numeric ?? refund.amount), currency: p.currency_code, ...replyTo(await storeMetadata(scope)) },
     `refunded:${refund.id}`,
   )
+}
+
+// The business's copy of an entry from one of the website's forms, to each address it gave for
+// enquiries, from the site the customer was on; replying answers the customer. The entry is kept
+// whether or not the email goes, and shows in the editor's enquiries.
+export const sendEnquiry = async (scope: MedusaContainer, entry: { id: string | number; form: string; page: string | null; fields: Record<string, unknown> }, host: string | null) => {
+  const metadata = await storeMetadata(scope)
+  const shop = await shopInfoAt(scope, host)
+  const view = enquiryView(entry.form, entry.page, entry.fields, shop)
+  const customer = replyToOf(entry.fields)
+  const sends = enquiriesTo(metadata).map((to) =>
+    send(scope, to, "enquiry", { ...view, market: shop.market.key, ...(customer ? { replyTo: customer } : {}) }, `enquiry:${entry.id}:${to}`),
+  )
+  const failed = (await Promise.allSettled(sends)).find((r): r is PromiseRejectedResult => r.status === "rejected")
+  if (failed) throw failed.reason
 }

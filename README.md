@@ -39,7 +39,9 @@ Give your coding agent (Claude Code, Codex, Cursor, Gemini CLI or any other) thi
 
 > Read https://whisk.run/skill and install the Whisk CLI. Then, in a new empty folder, run
 > `whisk init --template shop` and `whisk deploy`, and give me the address the shop is live at
-> and the address of its admin. If it needs more memory, tell me where to turn on Boost.
+> and the address of its admin. If it needs more memory, tell me where to turn on Boost. Then walk
+> me through its setup list (`whisk call GET /admin/whisk/setup`) one item at a time until it is
+> taking orders, including signing up for Stripe if I want card payments.
 
 Or run it yourself:
 
@@ -54,9 +56,35 @@ whisk deploy
 The shop is live at `https://<app>--<business>.whisk.page`, selling in New Zealand dollars with
 GST included. Open `/app` on it and sign in with your Whisk account to add products and pages.
 It needs about 700 MB of memory: a paid Whisk plan with Boost on the app, or a Promoted app,
-which an owner turns on from the app's page in the dashboard. Customers can pay by bank transfer
-as soon as the business's account number is in the admin; cards, Apple Pay, Google Pay, Afterpay,
-Windcave and PayPal switch on when their keys are set ([Take payments](#take-payments)).
+which an owner turns on from the app's page in the dashboard.
+
+It opens for orders once it is set up ([Set it up](#set-it-up)): until then the site and the
+cart work, and checkout says the shop isn't taking orders yet.
+
+## Set it up
+
+A shop that takes orders nobody hears of, or that customers can't pay or get delivered, lets
+them down, so checkout stays closed until the business has given:
+
+- **who is emailed each new order**, and **who is emailed each enquiry** from the website's forms
+  (a customer who replies to an order email reaches that address too);
+- **a way to be paid**: Stripe for cards, Apple Pay, Google Pay and Afterpay, Windcave, PayPal, or
+  the bank account customers pay into by transfer ([Take payments](#take-payments));
+- **delivery options and prices** for each country it sells in: none is assumed;
+- **the business's name**, as it goes on tax invoices.
+
+Its GST number, phone and address (shown on order confirmations, so they serve as tax invoices),
+privacy, returns and terms pages, and its own domain and email address are recommended.
+
+The setup card above the orders in the admin lists what is left and takes the business's details;
+the Store page keeps them to change later, with no deploy. An agent reads the same list, each item
+with step-by-step instructions to walk the person through (signing up for Stripe included), and
+sends the details:
+
+```sh
+whisk call GET /admin/whisk/setup
+whisk call POST /admin/whisk/setup --data '{"orders_email": "orders@example.co.nz", "enquiries_email": "hello@example.co.nz"}'
+```
 
 ## What you get
 
@@ -73,7 +101,7 @@ Windcave and PayPal switch on when their keys are set ([Take payments](#take-pay
   Windcave, PayPal, and bank transfer, with payment taken when an order is placed or when it is
   sent.
 - **New Zealand or Australia**: prices in NZD with 15% GST or AUD with 10% GST, included in
-  prices or added at checkout, with delivery set up on the first deploy.
+  prices or added at checkout, with a delivery zone for each country made on the first deploy.
 - **A website around it**: pages built from blocks (hero, text, picture, columns, list, products,
   form, HTML) at any address, shared lists (testimonials, people, questions, locations, logos)
   edited once and shown on any page, and a story under each product's live price, options and stock.
@@ -242,10 +270,13 @@ already sells keeps its products in the market it sold in.
   `SHOP_PRICES_INCLUDE_TAX_AU` set one market's own; without them the plain setting applies.
 - Emails link to the customer's own site, and each site's sitemap lists what it sells.
 
-## Hear of each order
+## Hear of each order and enquiry
 
-Set `SHOP_ORDERS_TO` in `env` to the addresses, separated by commas, that are told of each new
-order: what was bought, who by, how it was paid, and a link to the order in the admin.
+The addresses in the setup ([Set it up](#set-it-up)) are told of each new order (what was bought,
+who by, how it was paid, and a link to the order in the admin) and each enquiry from the website's
+forms, which is also kept in the editor. Replying to either answers the customer. `SHOP_ORDERS_TO`
+in `env`, addresses separated by commas, adds more for orders, or one market's with
+`SHOP_ORDERS_TO_AU`.
 
 ## Start with a catalogue
 
@@ -261,8 +292,8 @@ the admin are never overwritten.
 
 ## Take payments
 
-Bank transfer is on once the business's account is in the admin: Settings, Store, Metadata,
-`bank_account_name` and `bank_account_number`. Each other way to pay is on when its secrets are
+Bank transfer is on once the business's account is in the setup ([Set it up](#set-it-up)). Each
+other way to pay is on when its secrets are
 declared under `secrets` in `whisk.yaml` and a person sets their values in the dashboard (the
 deploy waits until they have):
 

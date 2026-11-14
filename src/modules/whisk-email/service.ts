@@ -16,7 +16,10 @@ export default class WhiskEmailService extends AbstractNotificationProviderServi
     const mail = render(n.data ?? {})
     const market = typeof n.data?.market === "string" ? n.data.market : ""
     const from = (market ? marketSetting(process.env, "SHOP_EMAIL_FROM", { key: market }) : process.env.SHOP_EMAIL_FROM) || undefined
-    const { id } = await sendEmail({ to: n.to, from, ...mail })
+    // data.replyTo is where an answer goes: the business, on a customer's email; the customer, on
+    // the business's copy of their order or enquiry (src/lib/notify.ts).
+    const replyTo = typeof n.data?.replyTo === "string" && n.data.replyTo ? n.data.replyTo : undefined
+    const { id } = await sendEmail({ to: n.to, from, ...mail, ...(replyTo ? { reply_to: replyTo } : {}) })
     return { id }
   }
 }

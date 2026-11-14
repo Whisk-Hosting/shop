@@ -15,6 +15,7 @@ export type ShopContext = {
   stripeTestKey: string | null // STRIPE_TEST_PUBLISHABLE_KEY, for test mode (src/lib/stripe-mode.ts)
   paypalClientId: string | null
   providers: string[] // payment providers the region takes and the server has loaded
+  open?: boolean // false while the shop's setup is not done, and checkout takes no orders (src/lib/shop-setup.ts)
   market: { key: string; country: string; currency: string; name: string; locale: string; timeZone: string; taxRate: number; taxName: string; taxInclusive: boolean; host: string | null } // src/lib/market.ts
   alternates: { hreflang: string; origin: string }[] // the shop's sites in its markets, when it sells in several
   app?: string // named to Whisk's commerce engine when the server shares it among shops (src/lib/front.ts)

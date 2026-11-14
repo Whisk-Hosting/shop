@@ -28,7 +28,12 @@ export type OrderView = {
   paymentMethod: "bank_transfer" | "card" | "paypal" | "account" | "other"
   bankTransfer?: { accountName: string; accountNumber: string; reference: string } | null
   poNumber?: string | null
+  business?: Business | null
 }
+
+// The business's details from its setup (src/lib/shop-setup.ts), shown under a confirmation so it
+// serves as a tax invoice.
+export type Business = { name: string; gstNumber: string; phone: string; address: string }
 
 const LOCALES: Record<string, string> = { nzd: "en-NZ", aud: "en-AU" }
 export const money = (amount: number, currency: string) =>
@@ -89,6 +94,9 @@ const totalsText = (o: OrderView) =>
     .filter(Boolean)
     .join("\n")
 
+const businessLine = (b?: Business | null) =>
+  b?.name ? [b.name, b.gstNumber ? `GST number ${b.gstNumber}` : "", b.phone, b.address].filter(Boolean).join(" · ") : ""
+
 const bankText = (o: OrderView) =>
   o.paymentMethod === "bank_transfer" && o.bankTransfer
     ? `Please pay ${money(o.total, o.currency)} by bank transfer to ${o.bankTransfer.accountName}, ${o.bankTransfer.accountNumber}, with the reference ${o.bankTransfer.reference}. We send your order once it arrives.`
@@ -109,9 +117,10 @@ export const orderPlaced = (o: OrderView): Rendered => {
         (account ? p(esc(account)) : "") +
         linesTable(o) +
         totalsTable(o) +
-        addressBlock(o.shippingAddress),
+        addressBlock(o.shippingAddress) +
+        (businessLine(o.business) ? `<p style="margin:16px 0 0;color:#555;font-size:13px">${esc(businessLine(o.business))}</p>` : ""),
     ),
-    text: [`Thanks for your order ${o.displayId}${o.poNumber ? `, PO ${o.poNumber}` : ""}.`, bank, account, linesText(o), totalsText(o)]
+    text: [`Thanks for your order ${o.displayId}${o.poNumber ? `, PO ${o.poNumber}` : ""}.`, bank, account, linesText(o), totalsText(o), businessLine(o.business)]
       .filter(Boolean)
       .join("\n\n"),
   }
@@ -208,8 +217,25 @@ export const passwordReset = (r: ResetView): Rendered => ({
   text: `Choose a password: ${r.link}\nThe link works for ${r.minutes} minutes. If you didn't ask for it, you can ignore this email.`,
 })
 
+// The business's copy of an enquiry from one of the website's forms (src/lib/enquiries.ts).
+// Replying answers the customer, when they gave an address.
+export type EnquiryView = { shop: string; shopUrl: string; title: string; from: string; page: string | null; fields: { label: string; value: string }[] }
+
+export const enquiry = (e: EnquiryView): Rendered => ({
+  subject: `${e.title} from ${e.from}`,
+  html: layout(
+    e.shop,
+    e.shopUrl,
+    e.title,
+    h1(`${e.title} from ${e.from}`) +
+      e.fields.map((f) => p(`<strong>${esc(f.label)}</strong><br>${esc(f.value).replace(/\n/g, "<br>")}`)).join("") +
+      (e.page ? p(`<span style="color:#555;font-size:14px">Sent from ${esc(e.page)}</span>`) : ""),
+  ),
+  text: [`${e.title} from ${e.from}`, ...e.fields.map((f) => `${f.label}:\n${f.value}`), e.page ? `Sent from ${e.page}` : ""].filter(Boolean).join("\n\n"),
+})
+
 // An email a plugin rendered itself, such as trade ordering's approval requests.
 export const rendered = (r: Rendered): Rendered => ({ subject: String(r.subject), html: String(r.html), text: String(r.text) })
 
-export const templates = { orderPlaced, newOrder, orderShipped, orderCanceled, refunded, signInCode, passwordReset, rendered }
+export const templates = { orderPlaced, newOrder, orderShipped, orderCanceled, refunded, signInCode, passwordReset, enquiry, rendered }
 export type TemplateName = keyof typeof templates

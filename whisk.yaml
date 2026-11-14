@@ -8,11 +8,14 @@ routes:
   public: ["/**"]
   challenge: ["/forms/*"]
 
-# The business's own admin, which the Whisk bar links for its team: the shop's admin, and the
-# site editor opened at the page being looked at (src/api/middlewares.ts).
+# The business's own admin, which the Whisk bar links for its team: the shop's admin, the site
+# editor opened at the page being looked at (src/api/middlewares.ts), and the list of what the
+# business still has to give before the shop takes orders (src/lib/shop-setup.ts), which whisk
+# deploy prints and the bar points at with Finish setup.
 admin:
   path: /app
   edit: "/cms/edit?path={path}"
+  setup: /admin/whisk/setup
 
 health:
   path: /health/ready
@@ -50,5 +53,6 @@ env:
   PAYPAL_ENVIRONMENT: live
   PAYPAL_CAPTURE: automatic
   SHOP_EMAIL_FROM: ""
-  # Where each new order is emailed, comma separated; empty sends none (src/lib/notify.ts).
+  # More addresses told of each new order, comma separated, beside those in the shop's setup in
+  # the admin (src/lib/shop-setup.ts).
   SHOP_ORDERS_TO: ""

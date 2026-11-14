@@ -9,6 +9,8 @@ import { publishableFor } from "../../lib/stripe"
 import { lineAmount, money, variantLabel } from "../../lib/format"
 
 const shop = Astro.locals.shop
+// A shop whose setup is not done takes no orders (src/lib/shop-setup.ts); the cart says so.
+if (shop.open === false) return Astro.redirect("/cart")
 const a = api(shop, Astro.request)
 const [cart, customer] = await Promise.all([getCart(a, Astro.cookies), me(a)])
 if (!cart || !(cart.items ?? []).length) return Astro.redirect("/cart")

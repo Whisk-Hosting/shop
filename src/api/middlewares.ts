@@ -10,10 +10,11 @@
 import { ApiLoader, defineMiddlewares, type MedusaNextFunction, type MedusaRequest, type MedusaResponse } from "@medusajs/framework/http"
 import { pathToFileURL } from "node:url"
 import { kv } from "../lib/kv"
-import { agentForStaff, personFrom, sessionHolds, staffFor } from "../lib/staff"
+import { personFrom, sessionHolds, sessionless, staffFor } from "../lib/staff"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { anyFilled, CMS, formFields, formName, formReturn, isMedusaPath, limitFor, STOREFRONT } from "../lib/routes"
-import { requestHost, storefrontContext } from "../lib/shop"
+import { requestHost, shopSetup, storefrontContext } from "../lib/shop"
+import { sendEnquiry } from "../lib/notify"
 import { cmsRequest, sendRedirect, sendStatic, storefrontServer } from "../lib/pages"
 import { startCms } from "../lib/cms"
 
@@ -39,14 +40,15 @@ const staffOnly = async (req: MedusaRequest, res: MedusaResponse, next: MedusaNe
 
 // Medusa checks who is signed in to the admin API (a session, a token or a secret API key) before
 // any middleware of the shop's runs, and turns away a request with none. An agent acting for a
-// team member has none, so it is signed in here as that member, for this request only, in front
+// team member has none, nor has a member's browser reading the setup list for the Whisk bar, so
+// each is signed in here as that member, for this request only, in front
 // of Medusa's check. The check is reached through Medusa's hook for wrapping its middlewares,
 // which Medusa reads as it puts the API together, after loading this file.
 type Middleware = (req: MedusaRequest, res: MedusaResponse, next: MedusaNextFunction) => unknown
 const agentSignIn = (check: Middleware): Middleware =>
   async function agentSignIn(req, res, next) {
     const person = personFrom(req.headers)
-    if (!agentForStaff(person)) return check(req, res, next)
+    if (!sessionless(person, req.method, String(req.originalUrl ?? req.url ?? "").split("?")[0]!)) return check(req, res, next)
     try {
       ;(req as any).auth_context = await staffFor(req.scope, person)
     } catch (e) {
@@ -59,6 +61,13 @@ const traced = ApiLoader.traceMiddleware
 ApiLoader.traceMiddleware = (handler, route) => {
   const own = route.route === "/admin" && handler.name === "authMiddleware" ? (agentSignIn(handler as Middleware) as typeof handler) : handler
   return traced ? traced(own, route) : own
+}
+
+// A shop takes no order until the business has said who hears of it, where enquiries go, how it
+// is paid and its name (src/lib/shop-setup.ts).
+const openShop = async (req: MedusaRequest, res: MedusaResponse, next: MedusaNextFunction) => {
+  if ((await shopSetup(req.scope)).setup.ready) return next()
+  return refuse(res, 409, "SHOP_NOT_READY", "The shop is not taking orders yet.", "The business finishes setting the shop up in its admin (/app); GET /admin/whisk/setup lists what is missing.")
 }
 
 // Password sign-in, sign-up and reset requests, counted per address and per network address.
@@ -123,7 +132,12 @@ const formPost = async (req: MedusaRequest, res: MedusaResponse, name: string) =
   if (!anyFilled(fields)) return refuse(res, 400, "INVALID_REQUEST", "The form was empty.", "Fill in at least one field.")
   const referer = typeof req.headers.referer === "string" ? req.headers.referer : undefined
   const db = req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION)
-  await db("form_entries").insert({ form: name, page: referer ?? null, data: JSON.stringify(fields) }).timeout(5_000, { cancel: true })
+  const [row] = await db("form_entries").insert({ form: name, page: referer ?? null, data: JSON.stringify(fields) }).returning("id").timeout(5_000, { cancel: true })
+  // The business hears of it by email; the entry is kept and the customer sent on even when the
+  // email cannot go now (src/lib/notify.ts).
+  sendEnquiry(req.scope, { id: row?.id ?? row, form: name, page: referer ?? null, fields }, requestHost(req.headers)).catch((e) =>
+    req.scope.resolve(ContainerRegistrationKeys.LOGGER).error(`enquiry email: ${(e as Error).message}`),
+  )
   res.status(303).set({ location: formReturn(referer, name) }).end()
 }
 
@@ -151,6 +165,7 @@ export default defineMiddlewares({
   routes: [
     { matcher: /^\/admin(\/.*)?$/, middlewares: [staffOnly] },
     { matcher: /^\/auth\/user\/.*/, middlewares: [(_req, res) => refuse(res, 404, "NOT_FOUND", "Staff sign in through Whisk.", "Open /app while signed in to Whisk.")] },
+    { matcher: /^\/store\/(b2b\/)?carts\/[^/]+\/complete$/, methods: ["POST"], middlewares: [(req, res, next) => openShop(req, res, next).catch(next)] },
     { matcher: /^\/auth\/customer\/emailpass(\/register|\/reset-password)?$/, methods: ["POST"], middlewares: [rateLimited] },
     { matcher: CMS, bodyParser: false, middlewares: [(req, res, next) => cms(req, res).catch(next)] },
     { matcher: STOREFRONT, bodyParser: false, middlewares: [storefront] },

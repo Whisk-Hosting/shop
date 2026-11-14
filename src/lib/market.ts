@@ -17,15 +17,14 @@ export type Market = {
   readonly taxRate: number // percent
   readonly taxName: string
   readonly taxInclusive: boolean // prices entered and shown with tax included
-  readonly delivery: number // the first standard delivery price, in the currency's main unit
   readonly host: string | null // the domain this market sells on, from SHOP_MARKETS; null for a one-market shop
 }
 
 type Preset = Omit<Market, "key" | "host">
 
 export const MARKETS: Readonly<Record<string, Preset>> = {
-  nz: { country: "nz", currency: "nzd", name: "New Zealand", locale: "en-NZ", timeZone: "Pacific/Auckland", taxRate: 15, taxName: "GST", taxInclusive: true, delivery: 10 },
-  au: { country: "au", currency: "aud", name: "Australia", locale: "en-AU", timeZone: "Australia/Sydney", taxRate: 10, taxName: "GST", taxInclusive: true, delivery: 15 },
+  nz: { country: "nz", currency: "nzd", name: "New Zealand", locale: "en-NZ", timeZone: "Pacific/Auckland", taxRate: 15, taxName: "GST", taxInclusive: true },
+  au: { country: "au", currency: "aud", name: "Australia", locale: "en-AU", timeZone: "Australia/Sydney", taxRate: 10, taxName: "GST", taxInclusive: true },
 }
 
 type Env = Record<string, string | undefined>

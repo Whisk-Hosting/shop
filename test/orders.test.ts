@@ -72,6 +72,7 @@ test("every email renders a subject, html and text", () => {
     refunded: { shop: "Kiwi Goods", shopUrl: shop.url, displayId: "#42", amount: 10, currency: "nzd" },
     signInCode: { shop: "Kiwi Goods", shopUrl: shop.url, code: "123456", minutes: 10 },
     passwordReset: { shop: "Kiwi Goods", shopUrl: shop.url, link: "https://kiwi.whisk.page/account/password?token=t", minutes: 15 },
+    enquiry: { shop: "Kiwi Goods", shopUrl: shop.url, title: "Contact", from: "Ana", page: null, fields: [{ label: "Message", value: "Hi" }] },
     rendered: { subject: "An order waits for you", html: "<p>Kiwi Goods</p>", text: "Kiwi Goods" },
   }
   for (const [name, render] of Object.entries(templates)) {

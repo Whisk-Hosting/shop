@@ -49,7 +49,7 @@ const platformCall = async <T>(method: string, path: string, waitMs: number, bod
 }
 
 export type Attachment = { filename: string; content_type?: string; content: string }
-export type Email = { to: string; subject: string; html: string; text: string; from?: string; attachments?: Attachment[] }
+export type Email = { to: string; subject: string; html: string; text: string; from?: string; reply_to?: string; attachments?: Attachment[] }
 
 // sendEmail sends one transactional email from the shop's own address. A 429 carries
 // Retry-After; it is raised for the caller (a subscriber, which Medusa retries, or the sweep).

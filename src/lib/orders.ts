@@ -121,8 +121,8 @@ export const orderView = (o: OrderLike, shop: { name: string; url: string }, ban
   }
 }
 
-// The business's bank account, from the store's details in the admin (Settings, Store,
-// Metadata: bank_account_name and bank_account_number). Without both, bank transfer is not
+// The business's bank account, from its setup in the admin (src/lib/shop-setup.ts:
+// bank_account_name and bank_account_number). Without both, bank transfer is not
 // offered at checkout.
 export const bankAccountOf = (metadata: Record<string, unknown> | null | undefined): BankAccount | null => {
   const name = typeof metadata?.bank_account_name === "string" ? metadata.bank_account_name.trim() : ""
