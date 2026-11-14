@@ -10,7 +10,7 @@ import path from "node:path"
 import type { MedusaContainer } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { createProductCategoriesWorkflow, createProductsWorkflow, updateProductsWorkflow, uploadFilesWorkflow } from "@medusajs/medusa/core-flows"
-import { catalogueFrom, categoriesToAdd, handleOf, imageType, productInput, productsToAdd } from "../lib/catalogue"
+import { BATCH, catalogueFrom, categoriesToAdd, categoryTreeFrom, imageType, productInput, productsToAdd } from "../lib/catalogue"
 import { marketsFrom } from "../lib/market"
 import { staticFile } from "../lib/routes"
 
@@ -56,7 +56,9 @@ export default async function catalogue(container: MedusaContainer) {
   const file = path.join(dir, "catalogue.json")
   if (!existsSync(file)) return
   const markets = marketsFrom(process.env)
-  const products = catalogueFrom(JSON.parse(readFileSync(file, "utf8")), markets.map((m) => m.key))
+  const json = JSON.parse(readFileSync(file, "utf8"))
+  const products = catalogueFrom(json, markets.map((m) => m.key))
+  const tree = categoryTreeFrom(json)
 
   const productModule = container.resolve(Modules.PRODUCT)
   const stores = container.resolve(Modules.STORE)
@@ -64,16 +66,21 @@ export default async function catalogue(container: MedusaContainer) {
 
   await storePictures(container, products.map((p) => p.handle), logger)
   const have = await productModule.listProducts({ handle: products.map((p) => p.handle) }, { select: ["handle"], withDeleted: true })
-  const add = productsToAdd(products, have.map((p) => p.handle))
+  const add = productsToAdd(products, have.map((p) => p.handle)).slice(0, BATCH)
   if (!add.length) return
 
-  // Categories the new products name.
+  // Categories the new products name, and the list's own, each after its parent so it can name it.
   const existing = await productModule.listProductCategories({}, { select: ["id", "handle"] })
-  const newCategories = categoriesToAdd(add, existing.map((c) => c.handle))
-  const made = newCategories.length
-    ? (await createProductCategoriesWorkflow(container).run({ input: { product_categories: newCategories.map((name) => ({ name, handle: handleOf(name), is_active: true })) } })).result
-    : []
-  const categoryIds = Object.fromEntries([...existing, ...made].map((c) => [c.handle, c.id]))
+  const categoryIds: Record<string, string> = Object.fromEntries(existing.map((c) => [c.handle, c.id]))
+  const newCategories = categoriesToAdd(add, existing.map((c) => c.handle), tree)
+  for (const c of newCategories) {
+    const [made] = (
+      await createProductCategoriesWorkflow(container).run({
+        input: { product_categories: [{ name: c.name, handle: c.handle, is_active: true, ...(c.parent ? { parent_category_id: categoryIds[c.parent] } : {}), ...(c.description ? { description: c.description } : {}), ...(c.rank !== undefined ? { rank: c.rank } : {}) }] },
+      })
+    ).result
+    categoryIds[made.handle] = made.id
+  }
 
   // Pictures, stored once per product added.
   const imageUrls: Record<string, string> = {}
@@ -100,9 +107,9 @@ export default async function catalogue(container: MedusaContainer) {
   const channelOf = (key: string) => channels.find((c) => c.metadata?.market === key)?.id ?? (markets.length === 1 ? store.default_sales_channel_id : undefined)
   const missing = markets.filter((m) => !channelOf(m.key))
   if (missing.length) throw new Error(`catalogue: the shop is not set up to sell in ${missing.map((m) => m.name).join(", ")} yet: run the migrate step`)
-  const ctx = { markets: markets.map((m) => ({ key: m.key, currency: m.currency, channelId: channelOf(m.key)! })), profileId: profile.id, categoryIds, imageUrls }
+  const ctx = { markets: markets.map((m) => ({ key: m.key, currency: m.currency, channelId: channelOf(m.key)! })), profileId: profile.id, categoryIds, imageUrls, tree }
   await createProductsWorkflow(container).run({ input: { products: add.map((p) => productInput(p, ctx)) } })
-  logger.info(`catalogue: added ${add.length} products${made.length ? ` and ${made.length} categories` : ""}`)
+  logger.info(`catalogue: added ${add.length} products${newCategories.length ? ` and ${newCategories.length} categories` : ""}`)
 }
 
 export const config = { name: "catalogue", schedule: "* * * * *" }

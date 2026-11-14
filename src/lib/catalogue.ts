@@ -2,6 +2,10 @@
 // catalogue.json, its pictures in catalogue/images), and the shop adds the products and
 // categories it names that it does not have yet. Matching is by handle, so a product staff
 // have changed in the admin is never overwritten.
+//
+// Categories can nest: the file's own categories list names each with its handle and its
+// parent's, and a product names its categories by handle (or by name, for a category the list
+// leaves out). A product with no price is listed without one, for customers to enquire about.
 
 export type CatalogueProduct = {
   readonly handle: string
@@ -10,13 +14,22 @@ export type CatalogueProduct = {
   readonly description?: string
   // In the currency's main unit, entered as the market enters prices: one price for every market
   // the product is sold in, or one per market ({"nz": 24, "au": 22}).
-  readonly price: number | Readonly<Record<string, number>>
+  readonly price?: number | Readonly<Record<string, number>> | null
   readonly markets?: readonly string[] // the markets it is sold in (src/lib/market.ts); every market when left out
   readonly sku?: string
   readonly inStock?: boolean // false: listed, but sold out until staff add stock
   readonly categories?: readonly string[]
   readonly options?: readonly { readonly title: string; readonly values: readonly string[] }[]
   readonly images?: readonly string[] // file names in catalogue/images, or addresses (/catalogue/a.jpg) used as they are
+  readonly metadata?: Readonly<Record<string, unknown>> // kept with the product, for the storefront to show
+}
+
+export type CatalogueCategory = {
+  readonly handle: string
+  readonly name: string
+  readonly parent?: string // the parent's handle
+  readonly description?: string
+  readonly rank?: number
 }
 
 const HANDLE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
@@ -29,7 +42,7 @@ export const marketsOf = (p: Pick<CatalogueProduct, "markets">, shop: readonly s
 
 // A product's price in one market.
 export const priceIn = (p: Pick<CatalogueProduct, "price">, market: string): number | undefined =>
-  typeof p.price === "number" ? p.price : p.price[market]
+  p.price == null ? undefined : typeof p.price === "number" ? p.price : p.price[market]
 
 // The catalogue file, checked: every product needs a handle, a title and a price in each market it
 // is sold in, it names only markets the shop sells in, and handles are unique. Throws with every
@@ -40,7 +53,7 @@ export const catalogueFrom = (json: unknown, markets: readonly string[] = ["nz",
   const problems = products.flatMap((p: any, i) => [
     ...(typeof p?.handle === "string" && HANDLE.test(p.handle) ? [] : [`product ${i + 1}: handle must be lower-case words joined by hyphens`]),
     ...(typeof p?.title === "string" && p.title.trim() ? [] : [`product ${i + 1}: title is missing`]),
-    ...(isPrice(p?.price) || (p?.price && typeof p.price === "object" && Object.values(p.price).every(isPrice))
+    ...(p?.price == null || isPrice(p?.price) || (p?.price && typeof p.price === "object" && Object.values(p.price).every(isPrice))
       ? []
       : [`product ${i + 1}: price must be a number of at least 0, or one per market as {"nz": 24}`]),
     ...(p?.markets === undefined || (Array.isArray(p.markets) && p.markets.length && p.markets.every((k: unknown) => markets.includes(String(k))))
@@ -49,6 +62,7 @@ export const catalogueFrom = (json: unknown, markets: readonly string[] = ["nz",
     ...(p?.price && typeof p.price === "object" && !Array.isArray(p.price)
       ? marketsOf(p, markets).filter((k) => !isPrice(p.price[k])).map((k) => `product ${i + 1}: no price for ${k}`)
       : []),
+    ...(p?.metadata === undefined || (p.metadata && typeof p.metadata === "object" && !Array.isArray(p.metadata)) ? [] : [`product ${i + 1}: metadata must be an object`]),
     ...((p?.options ?? []).every((o: any) => o?.title && Array.isArray(o.values) && o.values.length) ? [] : [`product ${i + 1}: every option needs a title and values`]),
   ])
   const handles = products.map((p: any) => p?.handle)
@@ -58,14 +72,62 @@ export const catalogueFrom = (json: unknown, markets: readonly string[] = ["nz",
   return products as CatalogueProduct[]
 }
 
+// The file's categories list, checked: each needs a handle and a name, handles are unique, and a
+// parent is one of the list's own categories, never itself or its own child. Throws with every
+// problem found.
+export const categoryTreeFrom = (json: unknown): CatalogueCategory[] => {
+  const list = (json as { categories?: unknown })?.categories
+  if (list === undefined) return []
+  if (!Array.isArray(list)) throw new Error("catalogue.json: categories must be a list")
+  const handles = list.map((c: any) => c?.handle)
+  const parentOf = Object.fromEntries(list.map((c: any) => [c?.handle, c?.parent]))
+  const loops = (h: string) => {
+    const seen = new Set<string>()
+    for (let at: string | undefined = h; at; at = parentOf[at]) {
+      if (seen.has(at)) return true
+      seen.add(at)
+    }
+    return false
+  }
+  const problems = list.flatMap((c: any, i) => [
+    ...(typeof c?.handle === "string" && HANDLE.test(c.handle) ? [] : [`category ${i + 1}: handle must be lower-case words joined by hyphens`]),
+    ...(typeof c?.name === "string" && c.name.trim() ? [] : [`category ${i + 1}: name is missing`]),
+    ...(c?.parent === undefined || handles.includes(c.parent) ? [] : [`category ${i + 1}: parent ${c.parent} is not in the list`]),
+    ...(typeof c?.handle === "string" && c?.parent !== undefined && handles.includes(c.parent) && loops(c.handle) ? [`category ${i + 1}: ${c.handle} is inside itself`] : []),
+  ])
+  const dupes = [...new Set(handles.filter((h, i) => handles.indexOf(h) !== i))]
+  const all = [...problems, ...dupes.map((h) => `category ${h} is listed twice`)]
+  if (all.length) throw new Error(`catalogue.json: ${all.join("; ")}`)
+  return list as CatalogueCategory[]
+}
+
 // "Impairment Goggles" is impairment-goggles.
 export const handleOf = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+
+// The handle of a category a product names: one of the list's handles, else made from its name.
+export const categoryHandle = (named: string, tree: readonly CatalogueCategory[] = []) => (tree.some((c) => c.handle === named) ? named : handleOf(named))
 
 export const productsToAdd = (products: readonly CatalogueProduct[], existing: readonly string[]) =>
   products.filter((p) => !existing.includes(p.handle))
 
-export const categoriesToAdd = (products: readonly CatalogueProduct[], existing: readonly string[]): string[] =>
-  [...new Set(products.flatMap((p) => p.categories ?? []))].filter((c) => !existing.includes(handleOf(c)))
+// The categories to add, parents before their children: every category of the list, and each
+// one a product names that the list leaves out, that the shop does not have yet.
+export const categoriesToAdd = (products: readonly CatalogueProduct[], existing: readonly string[], tree: readonly CatalogueCategory[] = []): CatalogueCategory[] => {
+  const depth = (c: CatalogueCategory): number => (c.parent ? 1 + depth(tree.find((t) => t.handle === c.parent)!) : 0)
+  const named = [...new Set(products.flatMap((p) => p.categories ?? []))]
+    .filter((n) => !tree.some((c) => c.handle === n))
+    .map((name) => ({ handle: handleOf(name), name }))
+  const all = [...tree, ...named.filter((c, i) => named.findIndex((o) => o.handle === c.handle) === i && !tree.some((t) => t.handle === c.handle))]
+  return all
+    .filter((c) => !existing.includes(c.handle))
+    .map((c, i) => ({ c, i, d: depth(c) }))
+    .sort((a, b) => a.d - b.d || a.i - b.i)
+    .map(({ c }) => c)
+}
+
+// How many products one run adds, so a large catalogue goes in over a few minutes rather than in
+// one long run.
+export const BATCH = 40
 
 // Each variant: one per combination of option values, or a single one for a product without
 // options (Medusa needs an option, so it gets a one-value "Default").
@@ -85,7 +147,7 @@ export const variantsOf = (p: CatalogueProduct) => {
 // The input createProductsWorkflow takes for one product.
 export const productInput = (
   p: CatalogueProduct,
-  ctx: { markets: readonly { key: string; currency: string; channelId: string }[]; profileId: string; categoryIds: Record<string, string>; imageUrls: Record<string, string> },
+  ctx: { markets: readonly { key: string; currency: string; channelId: string }[]; profileId: string; categoryIds: Record<string, string>; imageUrls: Record<string, string>; tree?: readonly CatalogueCategory[] },
 ) => {
   const { options, variants } = variantsOf(p)
   const sold = marketsOf(p, ctx.markets.map((m) => m.key)).map((k) => ctx.markets.find((m) => m.key === k)!)
@@ -95,6 +157,7 @@ export const productInput = (
     handle: p.handle,
     subtitle: p.subtitle,
     description: p.description,
+    ...(p.metadata ? { metadata: { ...p.metadata } } : {}),
     status: "published" as const,
     thumbnail: images[0],
     images: images.map((url) => ({ url })),
@@ -102,11 +165,11 @@ export const productInput = (
     variants: variants.map((v) => ({
       ...v,
       manage_inventory: p.inStock === false,
-      prices: sold.map((m) => ({ currency_code: m.currency, amount: priceIn(p, m.key)! })),
+      prices: p.price == null ? [] : sold.map((m) => ({ currency_code: m.currency, amount: priceIn(p, m.key)! })),
     })),
     sales_channels: sold.map((m) => ({ id: m.channelId })),
     shipping_profile_id: ctx.profileId,
-    category_ids: (p.categories ?? []).map((c) => ctx.categoryIds[handleOf(c)]).filter((id): id is string => !!id),
+    category_ids: (p.categories ?? []).map((c) => ctx.categoryIds[categoryHandle(c, ctx.tree)]).filter((id): id is string => !!id),
   }
 }
 

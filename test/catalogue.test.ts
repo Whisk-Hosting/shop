@@ -1,6 +1,6 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { catalogueFrom, categoriesToAdd, handleOf, imageType, marketsOf, priceIn, productInput, productsToAdd, variantsOf } from "../src/lib/catalogue"
+import { catalogueFrom, categoriesToAdd, categoryHandle, categoryTreeFrom, handleOf, imageType, marketsOf, priceIn, productInput, productsToAdd, variantsOf } from "../src/lib/catalogue"
 
 const goggles = { handle: "goggles", title: "Goggles", price: 325, sku: "G", categories: ["Impairment Goggles"], options: [{ title: "Type", values: ["Low", "High"] }], images: ["goggles-1.jpg"] }
 const tester = { handle: "tester", title: "Tester", price: 1058, sku: "T", inStock: false, categories: ["Workplace Breathalyser"] }
@@ -39,7 +39,44 @@ test("handleOf", () => {
 
 test("productsToAdd and categoriesToAdd", () => {
   assert.deepEqual(productsToAdd([goggles, tester], ["goggles"]).map((p) => p.handle), ["tester"])
-  assert.deepEqual(categoriesToAdd([goggles, tester, goggles], ["impairment-goggles"]), ["Workplace Breathalyser"])
+  assert.deepEqual(categoriesToAdd([goggles, tester, goggles], ["impairment-goggles"]), [{ handle: "workplace-breathalyser", name: "Workplace Breathalyser" }])
+  // The list's categories come parents first, whatever order the file gives them in.
+  const tree = [
+    { handle: "arthroscopy", name: "Arthroscopy", parent: "endoscopy" },
+    { handle: "endoscopy", name: "Endoscopy", parent: "veterinary" },
+    { handle: "veterinary", name: "Veterinary" },
+  ]
+  const p = { handle: "scope", title: "Scope", categories: ["arthroscopy", "Spare Parts"] }
+  assert.deepEqual(categoriesToAdd([p], [], tree).map((c) => c.handle), ["veterinary", "spare-parts", "endoscopy", "arthroscopy"])
+  assert.deepEqual(categoriesToAdd([p], ["veterinary", "spare-parts"], tree).map((c) => c.handle), ["endoscopy", "arthroscopy"])
+})
+
+test("categoryTreeFrom and categoryHandle", () => {
+  const tree = [{ handle: "human", name: "Human" }, { handle: "accessories-2", name: "Accessories", parent: "human" }]
+  assert.deepEqual(categoryTreeFrom({ products: [] }), [])
+  assert.deepEqual(categoryTreeFrom({ categories: tree }), tree)
+  const bad: [unknown, RegExp][] = [
+    [{ categories: {} }, /must be a list/],
+    [{ categories: [{ handle: "A b", name: "A" }] }, /handle must be/],
+    [{ categories: [{ handle: "a", name: " " }] }, /name is missing/],
+    [{ categories: [{ handle: "a", name: "A", parent: "b" }] }, /parent b is not in the list/],
+    [{ categories: [{ handle: "a", name: "A", parent: "b" }, { handle: "b", name: "B", parent: "a" }] }, /a is inside itself/],
+    [{ categories: [{ handle: "a", name: "A" }, { handle: "a", name: "A" }] }, /a is listed twice/],
+  ]
+  for (const [json, want] of bad) assert.throws(() => categoryTreeFrom(json), want)
+  assert.equal(categoryHandle("accessories-2", tree), "accessories-2")
+  assert.equal(categoryHandle("Spare Parts", tree), "spare-parts")
+})
+
+test("a product with no price, and its metadata", () => {
+  const enquiry = { handle: "scope", title: "Scope", metadata: { features: "<p>Bright</p>" } }
+  assert.deepEqual(catalogueFrom({ products: [enquiry] }), [enquiry])
+  assert.throws(() => catalogueFrom({ products: [{ ...enquiry, metadata: [] }] }), /metadata must be an object/)
+  const ctx = { markets: [{ key: "nz", currency: "nzd", channelId: "sc_1" }], profileId: "sp_1", categoryIds: {}, imageUrls: {} }
+  const got = productInput(enquiry, ctx)
+  assert.deepEqual(got.variants[0].prices, [])
+  assert.deepEqual(got.metadata, { features: "<p>Bright</p>" })
+  assert.equal(priceIn({ price: null }, "nz"), undefined)
 })
 
 test("variantsOf", () => {
