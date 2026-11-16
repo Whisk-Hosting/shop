@@ -1,21 +1,22 @@
 // The shop's build, start and migrate steps, in Node so they run the same in PowerShell,
-// Command Prompt and a Unix shell.
-//   node scripts/shop.mjs build     the Medusa server and admin, then the storefront, the site
-//                                   editor (cms/) and the starting catalogue (catalogue/) beside them
-//   node scripts/shop.mjs shop      the same without the editor: the image builds the editor in a
-//                                   stage of its own, which is reused while cms/ is unchanged
-//   node scripts/shop.mjs start     the built shop (.medusa/server), which starts the editor
-//   node scripts/shop.mjs migrate   the built shop's migrations and setup, and the editor's
-//   node scripts/shop.mjs dev       the storefront built once, then Medusa watching the source,
-//                                   with the editor beside it
+// Command Prompt and a Unix shell. Whisk's commerce engine answers the shop's API (start.ts); this
+// app holds its pages.
+//   node scripts/shop.mjs build     the shop (below), then the site editor (cms/) beside it
+//   node scripts/shop.mjs shop      the admin's screens, the server, the storefront and the starting
+//                                   catalogue (catalogue/) into build/; the image builds the
+//                                   editor in a stage of its own, reused while cms/ is unchanged
+//   node scripts/shop.mjs start     the built shop (build/), which starts the editor
+//   node scripts/shop.mjs migrate   the engine's migrations and setup, and the editor's
+//   node scripts/shop.mjs dev       the storefront and the admin built once, then the shop from its
+//                                   source on the engine whisk dev downloads, with the editor
 import { spawnSync } from "node:child_process"
 import { cpSync, existsSync, rmSync, symlinkSync } from "node:fs"
 import { createRequire } from "node:module"
 import path from "node:path"
-import { fileURLToPath } from "node:url"
+import { fileURLToPath, pathToFileURL } from "node:url"
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
-const server = path.join(root, ".medusa", "server")
+const out = path.join(root, "build")
 const require = createRequire(path.join(root, "package.json"))
 // Each tool's own command, run with this Node.
 const bin = (pkg) => {
@@ -23,19 +24,28 @@ const bin = (pkg) => {
   const { bin } = require(manifest)
   return path.join(path.dirname(manifest), typeof bin === "string" ? bin : Object.values(bin)[0])
 }
-const medusa = bin("@medusajs/cli")
-const astro = bin("astro")
 
 const run = (args, cwd = root) => {
   const r = spawnSync(process.execPath, args, { cwd, stdio: "inherit" })
   if (r.status !== 0) process.exit(r.status ?? 1)
 }
 
-const buildStorefront = () => run([astro, "build", "--root", "storefront"])
+const buildStorefront = () => run([bin("astro"), "build", "--root", "storefront"])
 
-// The site editor (cms/): Payload, a Next.js app with its own packages (React 19, where Medusa's
-// admin has 18), built in its folder. The built shop carries it whole but for what only builds
-// need, and installs its packages there (Dockerfile).
+// The admin's screens: Medusa's admin dashboard with the shop's own screens (src/admin), and trade
+// ordering's when Whisk installed it (Dockerfile, whisk-shop-b2b), built into plain files the
+// engine serves at /app.
+const buildAdmin = async (into) => {
+  const { build } = await import(pathToBundler())
+  const trade = existsSync(path.join(root, "node_modules", "@whisk", "shop-b2b", "package.json"))
+  rmSync(into, { recursive: true, force: true })
+  await build({ path: "/app", backendUrl: "/", outDir: into, sources: [path.join(root, "src", "admin")], plugins: trade ? ["@whisk/shop-b2b/admin"] : [] })
+}
+const pathToBundler = () => pathToFileURL(require.resolve("@medusajs/admin-bundler"))
+
+// The site editor (cms/): Payload, a Next.js app with its own packages (React 19, where the
+// admin's screens have 18), built in its folder. The built shop carries it whole but for what only
+// builds need, and installs its packages there (Dockerfile).
 const cms = path.join(root, "cms")
 const npm = (args, cwd = cms) => {
   const r = spawnSync("npm", args, { cwd, stdio: "inherit", shell: process.platform === "win32" })
@@ -48,44 +58,45 @@ const buildCms = () => {
   installCms()
   npm(["run", "build"])
 }
-// The built shop's copy of the editor uses the source's packages on a laptop (a link, which the
-// image replaces with its own production install).
+// The built shop's copy of the editor uses the source's packages on this computer (a link, which
+// the image replaces with its own production install).
 const LEAVE_OUT = new Set(["node_modules", ".next/cache", "media"])
 const copyCms = () => {
-  const into = path.join(server, "cms")
+  const into = path.join(out, "cms")
   rmSync(into, { recursive: true, force: true })
   cpSync(cms, into, { recursive: true, filter: (from) => !LEAVE_OUT.has(path.relative(cms, from).split(path.sep).join("/")) })
   symlinkSync(path.join(cms, "node_modules"), path.join(into, "node_modules"), "junction")
 }
 
-// The Medusa server and admin with the storefront, the old addresses and the catalogue beside it.
-const buildShop = () => {
-  run([medusa, "build"])
+// The admin's screens, the server (start.ts, migrate.ts, src/front.ts and src/lib, compiled), the
+// storefront, the old addresses and the catalogue, with the packages they run with.
+const buildShop = async () => {
+  rmSync(out, { recursive: true, force: true })
+  run([bin("typescript"), "-p", "tsconfig.build.json"])
+  await buildAdmin(path.join(out, "public", "admin"))
   buildStorefront()
-  rmSync(path.join(server, "storefront"), { recursive: true, force: true })
-  cpSync(path.join(root, "storefront", "dist"), path.join(server, "storefront", "dist"), { recursive: true })
+  cpSync(path.join(root, "storefront", "dist"), path.join(out, "storefront", "dist"), { recursive: true })
   // A moved website's old addresses and robots.txt (MOVER.md §5.4).
-  for (const file of ["redirects.json", "robots.txt"]) {
-    rmSync(path.join(server, file), { force: true })
-    if (existsSync(path.join(root, file))) cpSync(path.join(root, file), path.join(server, file))
+  for (const file of ["redirects.json", "robots.txt", "package.json", "package-lock.json"]) {
+    if (existsSync(path.join(root, file))) cpSync(path.join(root, file), path.join(out, file))
   }
-  rmSync(path.join(server, "catalogue"), { recursive: true, force: true })
-  if (existsSync(path.join(root, "catalogue"))) cpSync(path.join(root, "catalogue"), path.join(server, "catalogue"), { recursive: true })
+  if (existsSync(path.join(root, "catalogue"))) cpSync(path.join(root, "catalogue"), path.join(out, "catalogue"), { recursive: true })
 }
 
 const steps = {
-  build: () => {
-    buildShop()
+  build: async () => {
+    await buildShop()
     buildCms()
     copyCms()
   },
   shop: buildShop,
-  start: () => run([medusa, "start"], server),
-  migrate: () => run(["migrate.js"], server),
-  dev: () => {
+  start: () => run(["start.js"], out),
+  migrate: () => run(["migrate.js"], out),
+  dev: async () => {
     buildStorefront()
+    await buildAdmin(path.join(root, "public", "admin"))
     installCms()
-    run([medusa, "develop"])
+    run([bin("tsx"), "start.ts", "develop"])
   },
 }
 
@@ -94,4 +105,4 @@ if (!step) {
   console.error(`usage: node scripts/shop.mjs ${Object.keys(steps).join("|")}`)
   process.exit(2)
 }
-step()
+await step()

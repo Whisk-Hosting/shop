@@ -1,7 +1,6 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import { anyFilled, CMS, formFields, formName, formReturn, isMedusaPath, limitFor, redirectFor, staticFile, STOREFRONT } from "../src/lib/routes"
-import { adminReturn, isStaff, sessionHolds, splitName, personFrom } from "../src/lib/staff"
 
 test("Medusa's paths, the editor's and the storefront's", () => {
   const cases: [string, "medusa" | "cms" | "storefront"][] = [
@@ -71,34 +70,4 @@ test("staticFile serves built files and nothing outside them", () => {
   assert.equal(staticFile("/srv/client", "/fonts/a.woff2")!.cache, "public, max-age=86400, stale-while-revalidate=604800")
   const refused = ["/", "/products/beanie", "/../etc/passwd.txt", "/_astro/%2e%2e/x.js", "/.env", "/a/.git/config.json", "/x.php", "/bad%E0%A4%A.js", "/a%00.js"]
   for (const p of refused) assert.equal(staticFile("/srv/client", p), null, p)
-})
-
-test("who may run the shop", () => {
-  const p = (audience: string, roles: string, id = "u1", email = "a@b.com") => personFrom({ "x-whisk-audience": audience, "x-whisk-roles": roles, "x-whisk-user-id": id, "x-whisk-email": email })
-  assert.equal(isStaff(p("team", "owner")), true)
-  assert.equal(isStaff(p("team", "member,billing")), true)
-  assert.equal(isStaff(p("team", "member,guest")), true)
-  assert.equal(isStaff(p("team", "guest")), false)
-  assert.equal(isStaff(p("customer", "")), false)
-  assert.equal(isStaff(p("anonymous", "")), false)
-  assert.equal(isStaff(p("team", "owner", "")), false)
-  assert.equal(isStaff(p("team", "owner", "u1", "")), false)
-  assert.equal(sessionHolds("u1", p("team", "owner")), true)
-  assert.equal(sessionHolds("u2", p("team", "owner")), false)
-  assert.equal(sessionHolds("u1", p("anonymous", "")), false)
-  assert.equal(sessionHolds(undefined, p("team", "owner")), false)
-})
-
-test("the admin sign-in returns only to the admin", () => {
-  const cases: [string, string][] = [
-    ["/app", "/app"], ["/app/orders", "/app/orders"], ["/app/orders?q=1", "/app/orders?q=1"], ["/app?x", "/app?x"],
-    ["", "/app"], ["/", "/app"], ["/application", "/app"], ["//evil.com", "/app"], ["https://evil.com/app", "/app"], ["/app//evil.com", "/app"], ["/app/\\evil", "/app"],
-  ]
-  for (const [to, want] of cases) assert.equal(adminReturn(to), want, to)
-})
-
-test("names split into first and last", () => {
-  assert.deepEqual(splitName("Mary Smith"), { first_name: "Mary", last_name: "Smith" })
-  assert.deepEqual(splitName("  Mary  Ann  Smith "), { first_name: "Mary", last_name: "Ann Smith" })
-  assert.deepEqual(splitName(""), { first_name: "", last_name: "" })
 })

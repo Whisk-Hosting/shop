@@ -3,7 +3,7 @@ import http from "node:http"
 import { test } from "node:test"
 import { engineContext, storefrontFrom } from "../src/lib/front"
 import { adminFile } from "../src/lib/pages"
-import { handle, startFront } from "../src/front"
+import { handle, pagesReady, startFront } from "../src/front"
 
 const encode = (v: unknown) => Buffer.from(JSON.stringify(v)).toString("base64url")
 const context = { api: "http://127.0.0.1:8080", publishableKey: "pk_1", regionId: "reg_1", currency: "nzd", market: { key: "nz" } }
@@ -84,7 +84,8 @@ test("beside a shared engine the front asks it for the storefront's context as t
       }).on("error", fail),
     )
   try {
-    assert.equal(await get("/health/ready"), 200)
+    // The editor is built here (cms/) and not running, so the pages are not ready.
+    assert.equal(await get("/health/ready"), 503)
     assert.notEqual(await get("/about", { "x-forwarded-host": "shop.example", "x-whisk-storefront": "forged" }), 503)
     assert.equal(urls[0], "/whisk-engine/storefront?host=shop.example")
     assert.equal(seen[0]["x-whisk-shop-app"], "app_1")
@@ -93,4 +94,10 @@ test("beside a shared engine the front asks it for the storefront's context as t
     engine.close()
     delete process.env.WHISK_APP_ID
   }
+})
+
+test("the pages are ready once the site editor answers, or when there is none", async () => {
+  assert.equal(await pagesReady(false, () => Promise.reject(new Error("never asked"))), null)
+  assert.equal(await pagesReady(true, () => Promise.resolve()), null)
+  assert.equal(await pagesReady(true, () => Promise.reject(new Error("no answer in 5000 ms"))), "cms: no answer in 5000 ms")
 })

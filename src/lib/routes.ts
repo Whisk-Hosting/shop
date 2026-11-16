@@ -1,9 +1,9 @@
-// Which addresses are Medusa's, which the site editor's and which the storefront's, and how
+// Which addresses are the shop's API, which the site editor's and which the storefront's, and how
 // often the password routes may be tried. Pure; table-tested.
 
-// Medusa answers /store, /admin, /auth, /hooks, its admin at /app, /health, and /erp-link (the
-// ERP link's calls, when trade ordering is installed). The site editor (Payload) answers /cms and
-// its own files under /_next. Everything else is the storefront: the website's pages and the
+// Whisk's commerce engine answers the API in Medusa's shape (/store, /admin, /auth, /hooks), the
+// admin at /app, /health, and /erp-link (the ERP link's calls, when trade ordering is installed).
+// The site editor (Payload) answers /cms and its own files under /_next. Everything else is the storefront: the website's pages and the
 // shop's.
 const MEDUSA = /^\/(store|admin|auth|hooks|app|health|erp-link)(\/|$)/
 export const CMS = /^\/(cms|_next)(\/.*)?$/

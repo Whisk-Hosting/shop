@@ -2,7 +2,7 @@
   "name": "whisk-shop",
   "version": "1.0.0",
   "private": true,
-  "description": "A shop on Whisk: Medusa with its storefront, in one app.",
+  "description": "A shop on Whisk: its storefront, site editor and admin screens, on Whisk's commerce engine.",
   "license": "MIT",
   "scripts": {
     "build": "node scripts/shop.mjs build",
@@ -17,28 +17,20 @@
   },
   "dependencies": {
     "@astrojs/node": "11.1.7",
-    "@medusajs/admin-sdk": "2.22.2",
-    "@medusajs/caching-redis": "2.22.2",
-    "@medusajs/cli": "2.22.2",
-    "@medusajs/file-s3": "2.22.2",
-    "@medusajs/framework": "2.22.2",
-    "@medusajs/medusa": "2.22.2",
-    "@medusajs/payment-stripe": "2.22.2",
-    "astro": "7.3.8",
-    "ioredis": "5.11.1",
-    "pg": "8.23.1"
+    "astro": "7.3.8"
   },
   "devDependencies": {
     "@astrojs/check": "0.9.10",
-    "@swc/core": "1.16.13",
+    "@medusajs/admin-bundler": "2.22.2",
+    "@medusajs/admin-sdk": "2.22.2",
+    "@medusajs/icons": "2.22.2",
+    "@medusajs/types": "2.22.2",
+    "@medusajs/ui": "4.2.9",
     "@types/node": "22.20.5",
-    "@types/pg": "8.23.1",
     "@types/react": "18.3.31",
     "@types/react-dom": "18.3.7",
-    "prop-types": "15.8.1",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "ts-node": "10.9.2",
     "tsx": "4.23.15",
     "typescript": "5.9.3",
     "vite": "7.3.7"

@@ -1,6 +1,5 @@
-// What the shop answers beside its API, shared by the shop's server (src/api/middlewares.ts) and
-// the front that serves the same pages when Whisk runs the shop's API itself (src/front.ts): the
-// storefront's built files, a moved website's old addresses, and the site editor. Free of Medusa.
+// What the shop answers beside its API (src/front.ts): the storefront's built files, a moved
+// website's old addresses, and the site editor.
 import { createReadStream, promises as fs, readFileSync } from "node:fs"
 import type http from "node:http"
 import path from "node:path"
@@ -50,7 +49,7 @@ export const sendStatic = async (req: Req, res: Res, pathname: string, root = st
   return true
 }
 
-// The admin's built pages (public/admin), as Medusa serves them: a built file as it is, kept for
+// The admin's built pages (public/admin): a built file as it is, kept for
 // a year since a new build names its files anew, and the admin's page for any other address
 // under /app, never kept, so a new build shows at once. Served here when Whisk's commerce engine
 // runs apart from the app and the app keeps its admin's pages.

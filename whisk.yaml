@@ -9,9 +9,9 @@ routes:
   challenge: ["/forms/*"]
 
 # The business's own admin, which the Whisk bar links for its team: the shop's admin, the site
-# editor opened at the page being looked at (src/api/middlewares.ts), and the list of what the
-# business still has to give before the shop takes orders (src/lib/shop-setup.ts), which whisk
-# deploy prints and the bar points at with Finish setup.
+# editor opened at the page being looked at (src/lib/cms.ts), and the list of what the
+# business still has to give before the shop takes orders (Whisk's commerce engine keeps it),
+# which whisk deploy prints and the bar points at with Finish setup.
 admin:
   path: /app
   edit: "/cms/edit?path={path}"
@@ -21,18 +21,13 @@ health:
   path: /health/ready
   timeout: 60
 
-# The shop's API is Medusa's (/store, /admin, /auth, /hooks). Whisk may answer it with its own
-# commerce server, with the same answers on the same database, and this app then serves the
-# shop's pages alone (start.ts).
+# The shop's API is Medusa's (/store, /admin, /auth, /hooks), and Whisk's commerce engine answers
+# it on the app's database; this app serves the shop's pages (start.ts).
 commerce: medusa
 
 database: app
 migrate: "node migrate.js"
 
-kv: true
-# Medusa's event bus and workflow engine keep their jobs in the cache (BullMQ), so a full cache
-# refuses writes instead of dropping keys.
-kv_evict: false
 storage: true
 email: true
 
@@ -57,5 +52,5 @@ env:
   PAYPAL_CAPTURE: automatic
   SHOP_EMAIL_FROM: ""
   # More addresses told of each new order, comma separated, beside those in the shop's setup in
-  # the admin (src/lib/shop-setup.ts).
+  # the admin.
   SHOP_ORDERS_TO: ""

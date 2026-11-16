@@ -1,6 +1,6 @@
-// The CMS (Payload, in cms/) runs beside Medusa in the same app: the shop's server starts it on a
-// port of this machine's own, keeps it running, and passes /cms (the editor and its API) and
-// /_next (the editor's own files) to it (src/api/middlewares.ts). The storefront reads pages from
+// The CMS (Payload, in cms/) runs beside the shop's pages in the same app: the shop's server starts
+// it on a port of this machine's own, keeps it running, and passes /cms (the editor and its API)
+// and /_next (the editor's own files) to it (src/front.ts). The storefront reads pages from
 // it there too (storefront/src/lib/cms.ts). Nothing outside the app reaches that port.
 import { spawn, type ChildProcess } from "node:child_process"
 import { existsSync } from "node:fs"
@@ -10,9 +10,12 @@ import path from "node:path"
 export const CMS_PORT = Number(process.env.CMS_PORT ?? 9100)
 export const cmsAddress = () => `http://127.0.0.1:${CMS_PORT}`
 
-// Where the CMS is: cms/ beside the built server (.medusa/server/cms), or the source's on a
-// laptop running `medusa develop` from the shop's folder.
+// Where the CMS is: cms/ beside the built server (build/cms), or the source's under whisk dev
+// (start.ts develop).
 export const cmsDir = (cwd = process.cwd()) => path.resolve(cwd, "cms")
+
+// cmsBuilt is whether the CMS is built here, so the shop runs it.
+export const cmsBuilt = (dir = cmsDir()) => existsSync(path.join(dir, "node_modules", "next", "dist", "bin", "next"))
 
 // How long to wait before starting the CMS again after it stops: a second, doubling to a
 // minute, so a CMS that cannot start does not spin.
@@ -46,7 +49,7 @@ export const startCms = (log: (line: string) => void = (l) => console.log(l)) =>
   if (child || stopping) return
   const dir = cmsDir()
   const next = path.join(dir, "node_modules", "next", "dist", "bin", "next")
-  if (!existsSync(next)) return log(`cms: ${dir} has no built CMS, so /cms is not served`)
+  if (!cmsBuilt(dir)) return log(`cms: ${dir} has no built CMS, so /cms is not served`)
   const develop = process.argv.includes("develop")
   const started = Date.now()
   child = spawn(process.execPath, [next, develop ? "dev" : "start", "-p", String(CMS_PORT), "-H", "127.0.0.1"], {

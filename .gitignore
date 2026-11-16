@@ -1,5 +1,6 @@
 node_modules
-.medusa
+build
+public/admin
 dist
 .astro
 .env
@@ -8,3 +9,4 @@ dist
 cms/media
 *.tsbuildinfo
 cms/src/payload-types.ts
+.medusa

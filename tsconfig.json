@@ -11,7 +11,7 @@
     "declaration": false,
     "sourceMap": false,
     "inlineSourceMap": true,
-    "outDir": "./.medusa/server",
+    "outDir": "./build",
     "rootDir": "./",
     "jsx": "react-jsx",
     "forceConsistentCasingInFileNames": true,
@@ -19,7 +19,6 @@
     "checkJs": false,
     "strict": true
   },
-  "ts-node": { "swc": true },
-  "include": ["src/**/*", "medusa-config.ts", "migrate.ts", "start.ts", "test/**/*", ".medusa/types/*"],
-  "exclude": ["node_modules", ".medusa/server", ".medusa/admin", ".cache", "storefront"]
+  "include": ["src/**/*", "migrate.ts", "start.ts", "test/**/*"],
+  "exclude": ["node_modules", "build", "public", ".cache", "storefront", "cms"]
 }

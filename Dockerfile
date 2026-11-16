@@ -1,4 +1,4 @@
-# Medusa's server and admin, the storefront and the site editor (cms/) beside them, in one image.
+# The shop's pages and admin screens, the site editor (cms/) and Whisk's commerce engine, in one image.
 
 # Trade ordering: empty here, so this is a plain public shop. Whisk fills this stage with its
 # private @whisk/shop-b2b plugin for a Promoted app whose whisk.yaml says b2b: true.
@@ -30,17 +30,11 @@ RUN --mount=type=cache,target=/root/.npm npm ci
 COPY --from=whisk-shop-b2b / node_modules/@whisk/shop-b2b/
 COPY . .
 RUN --mount=type=cache,target=/root/.npm node scripts/shop.mjs shop
-# The built server (.medusa/server) carries its own package.json and lock: install only what it
-# runs with.
-WORKDIR /app/.medusa/server
+# The built shop (build/) carries the package.json and lock: install only what it runs with.
+WORKDIR /app/build
 RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
-COPY --from=whisk-shop-b2b / node_modules/@whisk/shop-b2b/
 # The site editor, built in its own stage with its own production packages.
 COPY --from=cms /app/cms cms/
-# Medusa's migrate makes an empty migrations folder for each module that ships none, the shop's
-# own payment providers among them once their keys are set; the image's files are read-only to the
-# user it runs as, so the folders are made here.
-RUN for d in node_modules/@medusajs/*/dist src/modules/*; do mkdir -p "$d/migrations"; done
 
 # The shop runs on Google's distroless Node image: Node and the system libraries it needs, with
 # no shell, package manager or other tools.
@@ -48,10 +42,8 @@ FROM gcr.io/distroless/nodejs24-debian13:nonroot
 # The image starts node itself; on the PATH it also runs the migrate command from whisk.yaml.
 ENV PATH=/nodejs/bin:/usr/local/bin:/usr/bin:/bin
 ENV NODE_ENV=production
-# The nonroot user's home is /nonexistent; Medusa's CLI keeps its settings under XDG_CONFIG_HOME.
-ENV XDG_CONFIG_HOME=/tmp
 WORKDIR /app
-COPY --from=build /app/.medusa/server ./
+COPY --from=build /app/build ./
 COPY --from=whisk-commerce-engine --chmod=755 / ./engine/
 USER nonroot
 EXPOSE 8080

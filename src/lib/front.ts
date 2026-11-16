@@ -1,5 +1,5 @@
 // What the shop's front reads from Whisk's commerce engine (src/front.ts): the storefront's
-// context, the same StorefrontContext src/lib/shop.ts reads under Medusa. An engine inside the
+// context (StorefrontContext, src/lib/shop.ts). An engine inside the
 // app sends it with every request it passes on, as base64url JSON in X-Whisk-Storefront; the
 // engine a server shares among its shops answers it when the front asks (engineContext). Pure.
 import type { StorefrontContext } from "./shop"

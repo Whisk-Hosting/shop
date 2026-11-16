@@ -15,7 +15,7 @@
 
 <p align="center">
   <img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-14213d">
-  <img alt="Medusa" src="https://img.shields.io/badge/commerce-Medusa-14213d">
+  <img alt="Whisk commerce engine" src="https://img.shields.io/badge/commerce-Whisk%20engine-14213d">
   <img alt="Payload" src="https://img.shields.io/badge/editor-Payload-14213d">
   <img alt="Astro" src="https://img.shields.io/badge/pages-Astro-14213d">
   <img alt="NZD and AUD with GST" src="https://img.shields.io/badge/sells%20in-NZD%20%7C%20AUD-e3a92b">
@@ -151,8 +151,9 @@ security, so the agent writes only the app. This shop is one of its starting poi
 ## How it works
 
 A business's website and online shop on Whisk, headless, in one app on one address. Astro draws
-every page from two back ends beside it: [Medusa](https://medusajs.com) for products, prices,
-stock, carts, orders and payments, and [Payload](https://payloadcms.com) for the website's pages,
+every page from two back ends beside it: Whisk's commerce engine for products, prices, stock,
+carts, orders and payments, which answers [Medusa](https://medusajs.com)'s API and runs Medusa's
+admin screens, and [Payload](https://payloadcms.com) for the website's pages,
 each product's story, the menus and the pictures. It sells in New Zealand dollars with GST
 included, or in Australia (`SHOP_COUNTRY`, below), or in both on two domains (`SHOP_MARKETS`), takes cards, Apple Pay, Google Pay and
 Afterpay through Stripe, cards through Windcave, PayPal, and bank transfer, and emails customers
@@ -168,7 +169,7 @@ products, form, HTML) at an address, a list block showing one of the shared list
 (`cms/src/collections/Lists.ts`), and rich text holding pictures and callouts where they go
 (`cms/src/richtext.ts`); drafts are seen only by the team, in a preview that follows
 the edit. A product's page at `/products/<handle>` shows its live price, options and stock from
-Medusa, then the blocks of the product page with the same handle. A form block posts to
+the engine, then the blocks of the product page with the same handle. A form block posts to
 `/forms/<name>`, kept in the database's `form_entries` table. A coding agent edits the pages
 through Payload's API at `/cms/api` on the shop's address, with its Whisk credential
 (`Authorization: Bearer $WHISK_TOKEN`), as the person it works for; each version of a page
@@ -202,15 +203,12 @@ Payload block in `cms/src/blocks`) and `src/styles/shop.css`. Change a block in 
 `cd cms && npx payload migrate:create <name>` for the database.
 
 ```
-medusa-config.ts            Medusa on Whisk: database, cache, storage, email, payments
-migrate.ts                  the migrate step: Medusa's migrations, src/scripts/setup.ts, Payload's
-src/scripts/setup.ts        NZD with GST, the New Zealand region, delivery, the storefront's key
-src/api/middlewares.ts      staff-only admin, rate limits, the editor at /cms, the storefront
-src/lib/cms.ts              starts Payload beside Medusa and passes /cms to it
-src/admin/routes/           Pages, Product pages, Menu and Media in the admin
-src/api/auth/               sign-in codes for customers; /auth/whisk signs staff in
-src/modules/                Whisk storage and email, and the Windcave and PayPal providers
-src/subscribers/, src/jobs/ order and password emails
+start.ts                    the shop's pages and the editor beside Whisk's commerce engine
+migrate.ts                  the migrate step: the engine's setup (NZD with GST, the region,
+                            delivery, the storefront's key) where the app runs it, then Payload's
+src/front.ts                the storefront, the editor at /cms, the admin's screens at /app
+src/lib/cms.ts              starts Payload beside the pages and passes /cms to it
+src/admin/                  Medusa's admin screens with Pages, Product pages, Menu and Media
 storefront/                 every page: the website's blocks and the shop's pages
 cms/                        Payload: pages, product pages, menus, media, its migrations
 scripts/shop.mjs            build, shop, start, migrate, dev
@@ -229,8 +227,8 @@ whisk dev --as you@example.com --roles owner -- npm run start
 
 These lines work the same in PowerShell, Command Prompt and a Unix shell. `whisk dev` runs the
 migration (`node migrate.js` in the build) first. Open http://127.0.0.1:3000 for the shop and
-http://127.0.0.1:3000/app for the admin. `npm run dev` instead rebuilds the server as its source
-changes.
+http://127.0.0.1:3000/app for the admin. `npm run dev` instead runs the shop from its source.
+`whisk dev` downloads Whisk's commerce engine for your computer and runs the shop on it.
 
 ## Where it sells
 

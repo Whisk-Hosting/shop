@@ -1,6 +1,6 @@
 // Marks an order paid in Stripe's test mode on its page in the admin (src/api/admin/whisk/stripe).
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
-import type { DetailWidgetProps, AdminOrder } from "@medusajs/framework/types"
+import type { DetailWidgetProps, AdminOrder } from "@medusajs/types"
 import { Badge, Container } from "@medusajs/ui"
 import { useEffect, useState } from "react"
 

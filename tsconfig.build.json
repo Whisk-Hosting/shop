@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./build",
+    "rootDir": "./",
+    "noEmit": false
+  },
+  "include": ["start.ts", "migrate.ts", "src/front.ts", "src/lib/**/*.ts"],
+  "exclude": ["node_modules", "build", "storefront", "cms", "src/admin"]
+}

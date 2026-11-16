@@ -1,5 +1,5 @@
-// The shop's front, when Whisk's commerce server answers the shop's API: the storefront, its
-// built files, a moved website's old addresses and the site editor. Nothing here loads Medusa.
+// The shop's front, beside Whisk's commerce engine, which answers the shop's API: the storefront,
+// its built files, a moved website's old addresses and the site editor.
 //
 // The server is either the one the app's machine shares among its shops (WHISK_COMMERCE_URL): the
 // edge then sends the API and the website's forms there and everything else here, on the app's
@@ -8,6 +8,7 @@
 // request that is not the API here with the storefront's context.
 import http from "node:http"
 import { pathToFileURL } from "node:url"
+import { cmsBuilt, cmsReady } from "./lib/cms"
 import { engineContext, SHOP_APP_HEADER, storefrontFrom, STOREFRONT_HEADER } from "./lib/front"
 import { cmsRequest, sendAdmin, sendRedirect, sendStatic, siteHost, storefrontServer } from "./lib/pages"
 import { CMS } from "./lib/routes"
@@ -48,15 +49,26 @@ const fromEngine = async (engine: string, req: http.IncomingMessage): Promise<St
   }
 }
 
+// pagesReady is what keeps the pages from being ready, or null: the site editor, which every page
+// reads, when it is built here and does not answer.
+export const pagesReady = (built: boolean, ask: () => Promise<void>): Promise<string | null> =>
+  built ? ask().then(() => null, (e: Error) => `cms: ${e.message}`) : Promise.resolve(null)
+
+// ready answers the platform's health check (whisk.yaml): the pages are ready once the site
+// editor answers, so a visitor waking the shop waits at the edge rather than meeting a page the
+// editor did not answer in time.
+const ready = async (res: http.ServerResponse) => {
+  const failed = await pagesReady(cmsBuilt(), () => cmsReady(5_000))
+  res.writeHead(failed ? 503 : 200, { "content-type": "application/json", "cache-control": "no-store" })
+  res.end(JSON.stringify(failed ? { ok: false, failed: [failed] } : { ok: true }))
+}
+
 export const handle = async (req: http.IncomingMessage, res: http.ServerResponse, engine = process.env.WHISK_COMMERCE_URL) => {
   const url = req.url ?? "/"
   const pathname = url.split("?")[0]
   const sent = engine ? null : storefrontFrom(req.headers[STOREFRONT_HEADER])
   delete req.headers[STOREFRONT_HEADER]
-  if (engine && pathname === "/health/ready") {
-    res.writeHead(200, { "content-type": "text/plain; charset=utf-8" })
-    return res.end("OK")
-  }
+  if (pathname === "/health/ready") return ready(res)
   if (CMS.test(pathname)) return cmsRequest(req, res, url)
   if (sendRedirect(req, res, url)) return
   if (await sendStatic(req, res, pathname)) return

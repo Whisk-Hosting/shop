@@ -1,5 +1,4 @@
-// Who Whisk's edge says is here (CONTRACT.md §4), read from its headers. Pure, and free of
-// Medusa, so the shop's front reads it as the shop's server does (src/lib/staff.ts).
+// Who Whisk's edge says is here (CONTRACT.md §4), read from its headers. Pure.
 
 // An agent is a coding agent reaching the shop as the person it acts for.
 export type Agent = { id: string; name: string }
