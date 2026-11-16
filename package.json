@@ -2,25 +2,20 @@
   "name": "whisk-shop",
   "version": "1.0.0",
   "private": true,
-  "description": "A shop on Whisk: its storefront, site editor and admin screens, on Whisk's commerce engine.",
+  "description": "A shop on Whisk: its pages (a Go server), site editor and admin screens, on Whisk's commerce engine.",
   "license": "MIT",
   "scripts": {
     "build": "node scripts/shop.mjs build",
     "start": "node scripts/shop.mjs start",
     "dev": "node scripts/shop.mjs dev",
     "migrate": "node scripts/shop.mjs migrate",
-    "typecheck": "tsc -p tsconfig.json --noEmit && astro check --root storefront",
-    "test": "tsx --test test/*.test.ts cms/test/*.test.ts"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "go test ./... && tsx --test cms/test/*.test.ts"
   },
   "engines": {
     "node": ">=22"
   },
-  "dependencies": {
-    "@astrojs/node": "11.1.7",
-    "astro": "7.3.8"
-  },
   "devDependencies": {
-    "@astrojs/check": "0.9.10",
     "@medusajs/admin-bundler": "2.22.2",
     "@medusajs/admin-sdk": "2.22.2",
     "@medusajs/icons": "2.22.2",

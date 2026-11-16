@@ -1,0 +1,43 @@
+{{- /* One order as the customer sees it: what to pay if it waits on a bank transfer, the lines, the
+totals and where it is going. .Order, .Shop. */ -}}
+{{- $o := .Order -}}{{- $shop := .Shop -}}
+{{if awaiting $o $shop.Bank}}
+<div class="notice">
+  <h2>Pay by bank transfer</h2>
+  <table class="totals">
+    <tbody>
+      <tr><td>Amount</td><td>{{money $o.Total $o.CurrencyCode}}</td></tr>
+      <tr><td>Account name</td><td>{{$shop.Bank.AccountName}}</td></tr>
+      <tr><td>Account number</td><td>{{$shop.Bank.AccountNumber}}</td></tr>
+      <tr><td>Reference</td><td>{{$o.DisplayID}}</td></tr>
+    </tbody>
+  </table>
+</div>
+{{end}}
+<ul class="lines">
+  {{range $o.Items}}
+  <li class="line">
+    {{with imgSized .Thumbnail 72 false "" ""}}{{.}}{{else}}<span></span>{{end}}
+    <div>
+      <div>{{pick .ProductTitle .ProductTitle .Title}}</div>
+      {{with variantLabel .}}<div class="muted">{{.}}</div>{{end}}
+      <div class="muted">× {{.Quantity}}</div>
+    </div>
+    <div class="price">{{money (lineAmount . $shop.Market.TaxInclusive) $o.CurrencyCode}}</div>
+  </li>
+  {{end}}
+</ul>
+{{part "totals" (dict "Sums" $o.Sums "Currency" $o.CurrencyCode "Market" $shop.Market "Shipped" (len $o.ShippingMethods))}}
+{{with $o.ShippingAddress}}{{if .Address1}}
+<section>
+  <h2>Delivery</h2>
+  <p>
+    {{.FirstName}} {{.LastName}}<br>
+    {{with .Company}}{{.}}<br>{{end}}
+    {{.Address1}}<br>
+    {{with .Address2}}{{.}}<br>{{end}}
+    {{.City}} {{.PostalCode}}
+  </p>
+  {{with $o.ShippingMethods}}<p class="muted">{{(index . 0).Name}}</p>{{end}}
+</section>
+{{end}}{{end}}

@@ -1,0 +1,9 @@
+{{- $c := .Data.Category -}}
+<h1>{{$c.Name}}</h1>
+{{with $c.Description}}<p class="muted">{{.}}</p>{{end}}
+{{with $c.Children}}
+<nav class="cats" aria-label="Subcategories" style="padding-left:0">
+  {{range .}}<a href="/categories/{{.Handle}}">{{.Name}}</a>{{end}}
+</nav>
+{{end}}
+{{part "grid" .Data.Grid}}

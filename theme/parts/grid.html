@@ -1,0 +1,11 @@
+{{- /* A page of products, and the way to the others. */ -}}
+{{if not .Products}}<p class="muted">{{.Empty}}</p>{{else}}
+<ul class="grid">{{range $i, $p := .Products}}{{part "card" (dict "Product" $p "Level" 2 "Eager" (lt $i 4) "First" (eq $i 0))}}{{end}}</ul>
+{{end}}
+{{if gt .Pager.Pages 1}}
+<nav class="pager" aria-label="Pages">
+  {{with .Pager.Prev}}<a class="button quiet" href="{{.}}" rel="prev">Previous</a>{{else}}<span></span>{{end}}
+  <span class="muted">Page {{.Pager.Page}} of {{.Pager.Pages}}</span>
+  {{with .Pager.Next}}<a class="button quiet" href="{{.}}" rel="next">Next</a>{{else}}<span></span>{{end}}
+</nav>
+{{end}}

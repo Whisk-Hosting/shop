@@ -9,7 +9,7 @@ routes:
   challenge: ["/forms/*"]
 
 # The business's own admin, which the Whisk bar links for its team: the shop's admin, the site
-# editor opened at the page being looked at (src/lib/cms.ts), and the list of what the
+# editor opened at the page being looked at (route.go), and the list of what the
 # business still has to give before the shop takes orders (Whisk's commerce engine keeps it),
 # which whisk deploy prints and the bar points at with Finish setup.
 admin:
@@ -22,7 +22,7 @@ health:
   timeout: 60
 
 # The shop's API is Medusa's (/store, /admin, /auth, /hooks), and Whisk's commerce engine answers
-# it on the app's database; this app serves the shop's pages (start.ts).
+# it on the app's database; this app serves the shop's pages (main.go).
 commerce: medusa
 
 database: app
@@ -36,10 +36,16 @@ email: true
 secrets: []
 
 env:
-  # The port of this machine the editor (cms/) answers on, inside the app only (src/lib/cms.ts).
+  # The port of this machine the editor (cms/) answers on, inside the app only (editor.go).
   CMS_PORT: "9100"
+  # Where the pages read content when the editor runs elsewhere (Whisk's content engine); empty,
+  # the server starts the editor in cms/ and reads it on CMS_PORT (editor.go).
+  CMS_URL: ""
+  # The markets the shop sells in, one domain each ("nz=example.co.nz, au=example.com.au"); empty,
+  # it sells in one (README, Sell in several countries).
+  SHOP_MARKETS: ""
   # The port of this machine the shop's pages answer on beside an engine inside the app (a
-  # preview), which passes them every request that is not the API (start.ts).
+  # preview), which passes them every request that is not the API (main.go).
   SHOP_FRONT_PORT: "9102"
   # The editor is part of a shop: it offers product pages and the products block (cms/src/app.ts).
   CMS_SHOP: "1"

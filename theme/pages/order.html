@@ -1,0 +1,4 @@
+<h1>Thank you</h1>
+<p>Order #{{.Data.DisplayID}} · {{.Data.Email}}</p>
+{{part "order" (dict "Order" .Data "Shop" .Shop)}}
+<p><a class="button quiet" href="/products">Keep shopping</a></p>

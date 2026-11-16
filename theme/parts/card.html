@@ -1,0 +1,13 @@
+{{- /* A product in a list. Level: the card's heading, a step below the heading it sits under.
+Eager: a card at the top of the page, whose picture loads at once; First: the first of them, loaded
+before anything else. */ -}}
+{{- $p := .Product -}}
+<li class="card">
+  <a href="/products/{{$p.Handle}}">
+    <div class="pic">{{cardImg $p.Thumbnail (pick .Eager true false) (pick .First true false)}}</div>
+    {{if eq (str .Level) "3"}}<h3>{{$p.Title}}</h3>{{else}}<h2>{{$p.Title}}</h2>{{end}}
+    {{with from $p.Variants}}
+    <span class="price{{if .Sale}} sale{{end}}">{{if .Varies}}From {{end}}{{money .Amount .Currency}}{{if .Sale}} <s>{{money .Original .Currency}}</s>{{end}}</span>
+    {{end}}
+  </a>
+</li>

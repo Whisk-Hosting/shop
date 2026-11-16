@@ -1,0 +1,40 @@
+{{- $c := .Data.Cart -}}{{- $m := .Shop.Market -}}
+<h1>Cart</h1>
+{{with .Data.Failed}}<p class="notice error" role="alert">{{.}}</p>{{end}}
+{{if not $c.Items}}
+<p>Your cart is empty. <a href="/products">Keep shopping</a></p>
+{{else}}
+<div class="checkout">
+  <ul class="lines">
+    {{range $c.Items}}
+    <li class="line">
+      {{with imgSized .Thumbnail 72 false "" ""}}{{.}}{{else}}<span></span>{{end}}
+      <div>
+        <a href="/products/{{lineHandle .}}">{{pick .ProductTitle .ProductTitle .Title}}</a>
+        {{with variantLabel .}}<div class="muted">{{.}}</div>{{end}}
+        <form method="post" action="/cart/update" class="qty">
+          <input type="hidden" name="line_id" value="{{.ID}}">
+          <label class="skip" for="q-{{.ID}}">Quantity</label>
+          <input id="q-{{.ID}}" name="quantity" type="number" inputmode="numeric" min="0" max="999" value="{{.Quantity}}">
+          <button class="quiet" type="submit">Update</button>
+        </form>
+        <form method="post" action="/cart/update">
+          <input type="hidden" name="line_id" value="{{.ID}}">
+          <input type="hidden" name="quantity" value="0">
+          <button class="link" type="submit">Remove</button>
+        </form>
+      </div>
+      <div class="price">{{money (lineAmount . $m.TaxInclusive) $c.CurrencyCode}}</div>
+    </li>
+    {{end}}
+  </ul>
+  <div class="summary">
+    {{part "totals" (dict "Sums" $c.Sums "Currency" $c.CurrencyCode "Market" $m "Shipped" (len $c.ShippingMethods))}}
+    {{if .Shop.Closed}}
+    <p class="notice" role="status">We're not taking orders online just yet. Please get in touch and we'll help you directly.</p>
+    {{else}}
+    <a class="button wide" href="/checkout">Check out</a>
+    {{end}}
+  </div>
+</div>
+{{end}}

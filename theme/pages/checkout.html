@@ -1,0 +1,88 @@
+{{- /* The checkout: contact and delivery, the delivery method, then payment. Card details go
+straight to Stripe from its own field, and PayPal's buttons approve the order the shop made
+(/shop-checkout.js). */ -}}
+{{- $v := .Data -}}{{- $c := $v.Cart -}}{{- $m := .Shop.Market -}}
+<h1>Checkout</h1>
+{{with $v.Failed}}<p class="notice error" role="alert">{{.}}</p>{{end}}
+<div class="checkout">
+  <div class="steps">
+    <section class="step" aria-labelledby="s1">
+      <h2 id="s1">Contact and delivery {{if $v.DetailsDone}}<a class="link" href="/checkout?edit=details">Change</a>{{end}}</h2>
+      {{if $v.DetailsDone}}{{with $c.ShippingAddress}}
+      <p>{{$c.Email}}<br>{{.FirstName}} {{.LastName}}, {{.Address1}}, {{.City}} {{.PostalCode}}</p>
+      {{end}}{{else}}
+      <form method="post" action="/checkout/details">
+        {{if not $v.Customer}}<p class="muted"><a href="/account?return=/checkout">Sign in</a> to use your saved details.</p>{{end}}
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="email" required value="{{if $c.Email}}{{$c.Email}}{{else}}{{with $v.Customer}}{{.Email}}{{end}}{{end}}">
+        {{if gt (len $v.Saved) 1}}
+        <label for="saved">Saved addresses</label>
+        <select id="saved" name="saved_address_id">
+          <option value="">Enter an address</option>
+          {{range $v.Saved}}<option value="{{.ID}}"{{if eq $v.SavedChosen .ID}} selected{{end}}>{{addressLabel .}}</option>{{end}}
+        </select>
+        {{end}}
+        {{part "address" (dict "V" $v.Prefill "Country" $m.Country)}}
+        {{if $v.Customer}}<label class="choice"><input type="checkbox" name="save_address" value="1"> Save this address to my account</label>{{end}}
+        <p style="margin-top:16px"><button class="wide" type="submit">Continue</button></p>
+      </form>
+      {{end}}
+    </section>
+
+    <section class="step" aria-labelledby="s2">
+      <h2 id="s2">Delivery {{if $v.DeliveryDone}}<a class="link" href="/checkout?edit=delivery">Change</a>{{end}}</h2>
+      {{if not $v.DetailsDone}}<p class="muted">Enter your address first.</p>
+      {{else if $v.DeliveryDone}}{{with index $c.ShippingMethods 0}}<p>{{.Name}}, {{money .Amount $c.CurrencyCode}}</p>{{end}}
+      {{else if not $v.Options}}<p class="error">We don't deliver to that address yet.</p>
+      {{else}}
+      <form method="post" action="/checkout/delivery">
+        {{range $i, $o := $v.Options}}
+        <label class="choice"><input type="radio" name="option_id" value="{{$o.ID}}"{{if $v.ChosenOption}}{{if eq $o.ID $v.ChosenOption}} checked{{end}}{{else if eq $i 0}} checked{{end}} required>
+          <span style="flex:1">{{$o.Name}}{{with $o.Type}}{{with .Description}}<span class="muted"><br>{{.}}</span>{{end}}{{end}}</span>
+          <span class="price">{{money (optionAmount $o) $c.CurrencyCode}}</span>
+        </label>
+        {{end}}
+        <button class="wide" type="submit">Continue</button>
+      </form>
+      {{end}}
+    </section>
+
+    <section class="step" aria-labelledby="s3">
+      <h2 id="s3">Payment</h2>
+      {{if not $v.DeliveryDone}}<p class="muted">Choose delivery first.</p>
+      {{else if not $v.Methods}}<p class="error">This shop isn't taking payments yet.</p>
+      {{else if eq $v.Paying "pp_stripe_stripe"}}
+      <form id="stripe-form" data-key="{{$v.StripeKey}}" data-secret="{{index $v.Session.Data "client_secret"}}" data-return="{{$v.StripeReturn}}">
+        <div id="stripe-element"></div>
+        <p class="error" id="stripe-error" role="alert"></p>
+        <button class="wide" type="submit">Pay {{money $c.Total $c.CurrencyCode}}</button>
+        <p><a class="link" href="/checkout">Pay another way</a></p>
+      </form>
+      <script src="https://js.stripe.com/v3/"></script>
+      {{else if eq $v.Paying "pp_paypal_paypal"}}
+      <div id="paypal" data-client="{{.Shop.PaypalClientID}}" data-order="{{index $v.Session.Data "id"}}" data-currency="{{upper $c.CurrencyCode}}">
+        <div id="paypal-buttons"></div>
+        <p class="error" id="paypal-error" role="alert"></p>
+        <p><a class="link" href="/checkout">Pay another way</a></p>
+      </div>
+      <script src="https://www.paypal.com/sdk/js?client-id={{.Shop.PaypalClientID}}&currency={{upper $c.CurrencyCode}}&intent={{if eq (str (index $v.Session.Data "intent")) "AUTHORIZE"}}authorize{{else}}capture{{end}}"></script>
+      {{else}}
+      <form method="post" action="/checkout/payment">
+        {{range $i, $pm := $v.Methods}}
+        <label class="choice"><input type="radio" name="provider_id" value="{{$pm.ID}}"{{if $v.Session}}{{if eq $v.Session.ProviderID $pm.ID}} checked{{end}}{{else if eq $i 0}} checked{{end}} required> {{$pm.Label}}</label>
+        {{end}}
+        <button class="wide" type="submit">Pay {{money $c.Total $c.CurrencyCode}}</button>
+      </form>
+      {{end}}
+    </section>
+  </div>
+  <aside class="summary" aria-label="Order summary">
+    <ul class="lines">
+      {{range $c.Items}}
+      <li style="display:flex;justify-content:space-between;gap:12px;padding:4px 0"><span>{{.Quantity}} × {{pick .ProductTitle .ProductTitle .Title}}{{with variantLabel .}}<span class="muted"> ({{.}})</span>{{end}}</span><span>{{money (lineAmount . $m.TaxInclusive) $c.CurrencyCode}}</span></li>
+      {{end}}
+    </ul>
+    {{part "totals" (dict "Sums" $c.Sums "Currency" $c.CurrencyCode "Market" $m "Shipped" (len $c.ShippingMethods))}}
+  </aside>
+</div>
+{{if $v.Paying}}<script src="/shop-checkout.js" defer></script>{{end}}

@@ -1,0 +1,12 @@
+{{- /* A cart's or an order's sums as the market writes them. .Of: the cart or order; .Market. */ -}}
+{{- $c := .Currency -}}{{- $m := .Market -}}{{- $t := sums .Sums $m.TaxInclusive -}}
+<table class="totals">
+  <tbody>
+    <tr><td>Subtotal</td><td>{{money $t.Subtotal $c}}</td></tr>
+    {{if gt $t.Discount 0.0}}<tr><td>Discount</td><td>-{{money $t.Discount $c}}</td></tr>{{end}}
+    <tr><td>Shipping</td><td>{{if .Shipped}}{{money $t.Shipping $c}}{{else}}Chosen at checkout{{end}}</td></tr>
+    {{if not $m.TaxInclusive}}<tr><td>{{$m.TaxName}}</td><td>{{money $t.Tax $c}}</td></tr>{{end}}
+    <tr class="grand"><td>Total</td><td>{{money $t.Total $c}}</td></tr>
+    {{if $m.TaxInclusive}}<tr><td class="muted">Includes {{$m.TaxName}}</td><td class="muted">{{money $t.Tax $c}}</td></tr>{{end}}
+  </tbody>
+</table>

@@ -1,0 +1,133 @@
+{{- $a := .Data -}}{{- $zone := .Shop.Market.TimeZone -}}
+{{with $a.Failed}}<p class="notice error" role="alert">{{.}}</p>{{end}}
+{{with $a.Customer}}{{- $me := . -}}
+<div class="account">
+  <div class="heading">
+    <h1>{{pick $me.FirstName $me.FirstName $me.Email}}</h1>
+    <form method="post" action="/account/sign-out"><button class="quiet" type="submit">Sign out</button></form>
+  </div>
+
+  <section aria-labelledby="orders">
+    <h2 id="orders">Orders</h2>
+    {{if not $a.Orders}}
+    <p class="muted">No orders yet.</p>
+    {{else}}
+    <ul class="lines">
+      {{range $a.Orders}}
+      <li class="order-row">
+        <a href="/account/orders/{{.ID}}">#{{.DisplayID}}</a>
+        <span class="muted">{{date .CreatedAt $zone}}</span>
+        <span>{{orderStatus .}}</span>
+        <span class="price">{{money .Total .CurrencyCode}}</span>
+      </li>
+      {{end}}
+    </ul>
+    {{end}}
+  </section>
+
+  <section aria-labelledby="addresses">
+    <h2 id="addresses">Addresses</h2>
+    <ul class="lines">
+      {{range $me.Addresses}}
+      <li class="order-row">
+        <span>{{.FirstName}} {{.LastName}}, {{.Address1}}{{with .Address2}}, {{.}}{{end}}, {{.City}} {{.PostalCode}}</span>
+        {{if .IsDefaultShipping}}<span class="muted">Default</span>{{else}}
+        <form method="post" action="/account/addresses">
+          <input type="hidden" name="action" value="default"><input type="hidden" name="id" value="{{.ID}}">
+          <button class="link" type="submit">Make default</button>
+        </form>
+        {{end}}
+        <a href="/account?address={{.ID}}#address-form">Edit</a>
+        <form method="post" action="/account/addresses">
+          <input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="{{.ID}}">
+          <button class="link" type="submit">Remove</button>
+        </form>
+      </li>
+      {{end}}
+    </ul>
+    {{if $a.Editing}}
+    <form id="address-form" method="post" action="/account/addresses" class="step">
+      {{with $a.EditAddress}}<input type="hidden" name="action" value="edit"><input type="hidden" name="id" value="{{.ID}}">{{else}}<input type="hidden" name="action" value="add">{{end}}
+      {{part "address" (dict "V" $a.EditAddress "Country" $.Shop.Market.Country)}}
+      <p></p>
+      <button type="submit">Save address</button> <a class="button quiet" href="/account#addresses">Cancel</a>
+    </form>
+    {{else}}
+    <a class="button quiet" href="/account?address=new#address-form">Add an address</a>
+    {{end}}
+  </section>
+
+  <section aria-labelledby="details">
+    <h2 id="details">Details</h2>
+    <form method="post" action="/account/details">
+      <div class="row two">
+        <div><label for="first_name">First name</label><input id="first_name" name="first_name" autocomplete="given-name" required value="{{$me.FirstName}}"></div>
+        <div><label for="last_name">Last name</label><input id="last_name" name="last_name" autocomplete="family-name" required value="{{$me.LastName}}"></div>
+      </div>
+      <label for="phone">Phone</label>
+      <input id="phone" name="phone" type="tel" autocomplete="tel" value="{{$me.Phone}}">
+      <label>Email</label>
+      <p>{{$me.Email}}</p>
+      <button type="submit">Save</button> <a class="button quiet" href="/account/password?email={{$me.Email}}">Set a password</a>
+    </form>
+  </section>
+</div>
+{{else}}
+<div class="narrow">
+  {{if eq $a.Step "code"}}
+  <h1>Check your email</h1>
+  <p class="muted">Code sent to {{$a.Email}}</p>
+  <form method="post" action="/account/code/verify">
+    <input type="hidden" name="email" value="{{$a.Email}}">
+    <input type="hidden" name="return" value="{{$a.Return}}">
+    <label for="code">Code</label>
+    <input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]*" required autofocus>
+    <p></p>
+    <button class="wide" type="submit">Sign in</button>
+  </form>
+  <form method="post" action="/account/code">
+    <input type="hidden" name="email" value="{{$a.Email}}">
+    <input type="hidden" name="return" value="{{$a.Return}}">
+    <p><button class="link" type="submit">Send a new code</button></p>
+  </form>
+  {{else if eq $a.Step "password"}}
+  <h1>Sign in</h1>
+  <form method="post" action="/account/sign-in">
+    <input type="hidden" name="return" value="{{$a.Return}}">
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" autocomplete="email" required value="{{$a.Email}}">
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required>
+    <p></p>
+    <button class="wide" type="submit">Sign in</button>
+  </form>
+  <p><a href="/account/password?email={{$a.Email}}">Forgot password</a> · <a href="/account?return={{$a.Return}}">Email me a code instead</a></p>
+  {{else if eq $a.Step "register"}}
+  <h1>Create an account</h1>
+  <form method="post" action="/account/register">
+    <input type="hidden" name="return" value="{{$a.Return}}">
+    <div class="row two">
+      <div><label for="first_name">First name</label><input id="first_name" name="first_name" autocomplete="given-name" required value="{{$a.FirstName}}"></div>
+      <div><label for="last_name">Last name</label><input id="last_name" name="last_name" autocomplete="family-name" required value="{{$a.LastName}}"></div>
+    </div>
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" autocomplete="email" required value="{{$a.Email}}">
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="new-password" minlength="{{$a.MinPassword}}" required>
+    <p></p>
+    <button class="wide" type="submit">Create account</button>
+  </form>
+  <p><a href="/account?return={{$a.Return}}">Sign in</a></p>
+  {{else}}
+  <h1>Sign in</h1>
+  <form method="post" action="/account/code">
+    <input type="hidden" name="return" value="{{$a.Return}}">
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" autocomplete="email" required value="{{$a.Email}}">
+    <p></p>
+    <button class="wide" type="submit">Email me a code</button>
+  </form>
+  <p><a href="/account?step=password&amp;return={{$a.Return}}">Use a password</a> · <a href="/account?step=register&amp;return={{$a.Return}}">Create an account</a></p>
+  {{end}}
+</div>
+{{end}}

@@ -1,0 +1,19 @@
+{{- /* The fields of one address. .V: the address to start from; .Country: the market's. */ -}}
+{{- $v := .V -}}
+<div class="row two">
+  <div><label for="first_name">First name</label><input id="first_name" name="first_name" autocomplete="given-name" required value="{{with $v}}{{.FirstName}}{{end}}"></div>
+  <div><label for="last_name">Last name</label><input id="last_name" name="last_name" autocomplete="family-name" required value="{{with $v}}{{.LastName}}{{end}}"></div>
+</div>
+<label for="company">Company <span class="muted">(optional)</span></label>
+<input id="company" name="company" autocomplete="organization" value="{{with $v}}{{.Company}}{{end}}">
+<label for="address_1">Address</label>
+<input id="address_1" name="address_1" autocomplete="address-line1" required value="{{with $v}}{{.Address1}}{{end}}">
+<label for="address_2">Suburb or unit <span class="muted">(optional)</span></label>
+<input id="address_2" name="address_2" autocomplete="address-line2" value="{{with $v}}{{.Address2}}{{end}}">
+<div class="row two">
+  <div><label for="city">Town or city</label><input id="city" name="city" autocomplete="address-level2" required value="{{with $v}}{{.City}}{{end}}"></div>
+  <div><label for="postal_code">Postcode</label><input id="postal_code" name="postal_code" autocomplete="postal-code" inputmode="numeric" required value="{{with $v}}{{.PostalCode}}{{end}}"></div>
+</div>
+<input type="hidden" name="country_code" value="{{with $v}}{{pick .CountryCode .CountryCode $.Country}}{{else}}{{$.Country}}{{end}}">
+<label for="phone">Phone <span class="muted">(for the courier)</span></label>
+<input id="phone" name="phone" type="tel" autocomplete="tel" value="{{with $v}}{{.Phone}}{{end}}">

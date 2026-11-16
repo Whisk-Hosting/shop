@@ -1,0 +1,7 @@
+{{- /* Products from the shop, read with the page: the newest, or those of a collection or category. */ -}}
+{{with .B.products}}
+<section class="block products">
+  {{with $.B.heading}}<h2>{{.}}</h2>{{end}}
+  <ul class="grid">{{range .}}{{part "card" (dict "Product" . "Level" (pick $.B.heading 3 2))}}{{end}}</ul>
+</section>
+{{end}}

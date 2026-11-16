@@ -17,7 +17,7 @@
   <img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-14213d">
   <img alt="Whisk commerce engine" src="https://img.shields.io/badge/commerce-Whisk%20engine-14213d">
   <img alt="Payload" src="https://img.shields.io/badge/editor-Payload-14213d">
-  <img alt="Astro" src="https://img.shields.io/badge/pages-Astro-14213d">
+  <img alt="Go" src="https://img.shields.io/badge/pages-Go-14213d">
   <img alt="NZD and AUD with GST" src="https://img.shields.io/badge/sells%20in-NZD%20%7C%20AUD-e3a92b">
 </p>
 
@@ -150,8 +150,8 @@ security, so the agent writes only the app. This shop is one of its starting poi
 
 ## How it works
 
-A business's website and online shop on Whisk, headless, in one app on one address. Astro draws
-every page from two back ends beside it: Whisk's commerce engine for products, prices, stock,
+A business's website and online shop on Whisk, headless, in one app on one address. A small Go
+server draws every page from two back ends beside it: Whisk's commerce engine for products, prices, stock,
 carts, orders and payments, which answers [Medusa](https://medusajs.com)'s API and runs Medusa's
 admin screens, and [Payload](https://payloadcms.com) for the website's pages,
 each product's story, the menus and the pictures. It sells in New Zealand dollars with GST
@@ -198,26 +198,36 @@ then the shop's: crawlers stay out of `/cart`, `/checkout`, `/account` and what 
 pictures Whisk serves at `/.whisk/` and the editor's at `/cms/api/media/file/`, and are given
 the one `sitemap.xml`.
 
-The look is `storefront/` (Astro): the layout, the blocks (`storefront/src/blocks`, one per
-Payload block in `cms/src/blocks`) and `src/styles/shop.css`. Change a block in both places, then
-`cd cms && npx payload migrate:create <name>` for the database.
+The look is `theme/`, plain HTML with Go's template tags: the frame (`theme/shop.html`), one file
+per block (`theme/blocks/<block>.html`, one per Payload block in `cms/src/blocks`), the shop's
+pages (`theme/pages/`), the pieces they share such as a product card or an order
+(`theme/parts/`) and `theme/shop.css`, which goes inline in every page. A block's file reads the
+block's fields as `.B.<field>`; a page reads what its handler gives it as `.Data`, and the shop,
+the menus and the cart's count beside it. Add a block by adding its file here and the block in
+`cms/src/blocks`, then `cd cms && npx payload migrate:create <name>` for the database. Files in
+`public/` are served as they are. The server's own code (`*.go`) rarely needs a change; under
+`npm run dev` a change to `theme/` shows on the next page.
 
 ```
-start.ts                    the shop's pages and the editor beside Whisk's commerce engine
+main.go                     the server: the engine beside it, the editor, redirects, files, pages
+route.go                    what each request is, before the shop's pages (pure, table-tested)
+pages.go, actions.go        each page and form of the shop, a function to an Answer
+reads.go, store.go          the commerce engine's API
+catalogue.go, seo.go        money, prices, carts, orders, addresses; titles, links, structured data
+draw.go, render.go          drawing pages from theme/
+theme/                      every page: the frame, the blocks, the shop's pages, the look
 migrate.ts                  the migrate step: the engine's setup (NZD with GST, the region,
                             delivery, the storefront's key) where the app runs it, then Payload's
-src/front.ts                the storefront, the editor at /cms, the admin's screens at /app
-src/lib/cms.ts              starts Payload beside the pages and passes /cms to it
 src/admin/                  Medusa's admin screens with Pages, Product pages, Menu and Media
-storefront/                 every page: the website's blocks and the shop's pages
 cms/                        Payload: pages, product pages, menus, media, its migrations
 scripts/shop.mjs            build, shop, start, migrate, dev
 ```
 
 ## Run it on your computer
 
-`whisk dev` needs Docker with the compose plugin. It starts Postgres, the cache and a local edge,
-then runs the shop with the environment it has in production:
+`whisk dev` needs Docker with the compose plugin, and the build needs Go (https://go.dev/dl) for
+the pages' server. `whisk dev` starts Postgres, the cache and a local edge, then runs the shop with
+the environment it has in production:
 
 ```
 npm install
@@ -284,7 +294,7 @@ in `env`, addresses separated by commas, adds more for orders, or one market's w
 ["guji.jpg"]}]}`. Prices are entered as the market enters them (with or without tax);
 `inStock: false` lists a product as sold out until staff add stock. A picture is a file in
 `catalogue/images`, stored on Whisk, or an address (`/catalogue/guji.jpg` from
-`storefront/public`, or `https://…`) used as it is. A job adds every product and category the
+`public`, or `https://…`) used as it is. A job adds every product and category the
 shop does not have yet, by handle, within a minute of each deploy, so products staff change in
 the admin are never overwritten.
 

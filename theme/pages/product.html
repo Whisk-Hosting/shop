@@ -1,0 +1,47 @@
+{{- /* One product: its pictures, price, options and stock, read live from the shop, and its story
+from the editor's product page of the same handle. Choosing an option shows that variant's price
+and stock straight away (/shop-options.js). */ -}}
+{{- $v := .Data -}}{{- $p := $v.Product -}}{{- $m := .Shop.Market -}}
+<div class="product">
+  <div class="gallery">
+    {{if $p.Images}}{{range $i, $img := $p.Images}}{{imgSized (dict "url" $img.URL "alt" (pick (eq $i 0) $p.Title "") "width" 800.0 "height" 800.0) 800 (eq $i 0) "" "(min-width: 720px) 60vw, 100vw"}}{{end}}
+    {{else}}{{with $p.Thumbnail}}{{imgSized (dict "url" . "alt" $p.Title "width" 800.0 "height" 800.0) 800 true "" "(min-width: 720px) 60vw, 100vw"}}{{end}}{{end}}
+  </div>
+  <div>
+    <h1>{{$p.Title}}</h1>
+    {{with $v.Variant}}{{with .Price}}
+    <p class="price{{if lt .Calculated .Original}} sale{{end}}">{{money .Calculated .CurrencyCode}}{{if lt .Calculated .Original}} <s>{{money .Original .CurrencyCode}}</s>{{end}}</p>
+    {{if $v.PriceInc}}<p class="muted price-inc">{{money $v.PriceInc .CurrencyCode}} including {{$m.TaxName}}</p>{{end}}
+    {{end}}{{else}}{{with $v.From}}<p class="price">From {{money .Amount .Currency}}</p>{{end}}{{end}}
+
+    {{if and (gt (len $p.Variants) 1) $p.Options}}
+    <form method="get" id="options">
+      {{range $p.Options}}{{$id := .ID}}
+      <label for="option_{{.ID}}">{{.Title}}</label>
+      <select id="option_{{.ID}}" name="option_{{.ID}}">
+        {{range .Values}}<option value="{{.Value}}"{{if eq (index $v.Chosen $id) .Value}} selected{{end}}>{{.Value}}</option>{{end}}
+      </select>
+      {{end}}
+      <noscript><button class="quiet" type="submit">Choose</button></noscript>
+    </form>
+    {{end}}
+
+    {{if $v.Variant}}{{if not $v.Available}}<p class="stock error">Sold out</p>{{else if $v.FewLeft}}<p class="stock">Only {{$v.FewLeft}} left</p>{{end}}
+    {{else if gt (len $p.Variants) 1}}<p class="stock error">That combination isn't available.</p>{{end}}
+
+    {{if $v.Added}}<p class="notice" role="status">Added to your cart. <a href="/cart">View cart</a></p>{{end}}
+    {{with $v.Failed}}<p class="notice error" role="alert">{{.}}</p>{{end}}
+
+    <form method="post" action="/cart/add">
+      <input type="hidden" name="variant_id" value="{{with $v.Variant}}{{.ID}}{{end}}">
+      <input type="hidden" name="return" value="{{$v.Return}}">
+      <label for="quantity">Quantity</label>
+      <input id="quantity" name="quantity" type="number" inputmode="numeric" min="1" max="999" value="1" style="max-width:120px">
+      <p style="margin-top:16px"><button class="wide" type="submit"{{if not $v.Available}} disabled{{end}}>Add to cart</button></p>
+    </form>
+
+    {{with $p.Description}}<div class="description"><h2>Details</h2><p style="white-space:pre-line">{{.}}</p></div>{{end}}
+  </div>
+</div>
+{{with $v.Story}}<div class="story">{{range $i, $b := .}}{{draw $b $i $}}{{end}}</div>{{end}}
+<script src="/shop-options.js" defer></script>

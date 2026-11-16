@@ -1,0 +1,4 @@
+<p><a href="/account">Account</a></p>
+<h1>Order #{{.Data.DisplayID}}</h1>
+<p class="muted">{{date .Data.CreatedAt .Shop.Market.TimeZone}}</p>
+{{part "order" (dict "Order" .Data "Shop" .Shop)}}
