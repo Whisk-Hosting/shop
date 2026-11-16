@@ -43,6 +43,9 @@ secrets: []
 env:
   # The port of this machine the editor (cms/) answers on, inside the app only (src/lib/cms.ts).
   CMS_PORT: "9100"
+  # The port of this machine the shop's pages answer on beside an engine inside the app (a
+  # preview), which passes them every request that is not the API (start.ts).
+  SHOP_FRONT_PORT: "9102"
   # The editor is part of a shop: it offers product pages and the products block (cms/src/app.ts).
   CMS_SHOP: "1"
   # The business's time zone for the times the editor shows, such as enquiries (cms/src/admin/data.ts).

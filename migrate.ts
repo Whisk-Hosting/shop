@@ -5,6 +5,7 @@
 // they sign nothing here.
 // The starting catalogue is added by a job (src/jobs/catalogue.ts), which has the storage.
 import { spawnSync } from "node:child_process"
+import { existsSync } from "node:fs"
 import path from "node:path"
 
 const env = { ...process.env, SHOP_STEP: "migrate", CMS_STEP: "migrate" }
@@ -14,10 +15,15 @@ const run = (args: string[], cwd = process.cwd()) => {
 }
 const cms = path.resolve("cms")
 
-// Whisk's commerce server, when it answers the shop's API (start.ts), migrates and sets up the
-// shop itself as it opens it. Otherwise Medusa does.
+// Whisk's commerce engine, when its node's answers the shop's API (start.ts), migrates and sets up
+// the shop itself as it opens it; the engine in the image (a preview's) does it here. Otherwise
+// Medusa does.
+const engine = path.join(__dirname, "engine", "engine")
 if (process.env.WHISK_COMMERCE_URL) {
-  console.log("Whisk's commerce server migrates and sets up the shop as it opens it.")
+  console.log("Whisk's commerce engine migrates and sets up the shop as it opens it.")
+} else if (existsSync(engine)) {
+  const r = spawnSync(engine, ["migrate"], { stdio: "inherit", env })
+  if (r.status !== 0) process.exit(r.status ?? 1)
 } else {
   const medusa = require.resolve("@medusajs/cli/cli.js")
   run([medusa, "db:migrate"])

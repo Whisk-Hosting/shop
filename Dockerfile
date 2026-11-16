@@ -4,6 +4,11 @@
 # private @whisk/shop-b2b plugin for a Promoted app whose whisk.yaml says b2b: true.
 FROM scratch AS whisk-shop-b2b
 
+# Whisk's commerce engine: empty here. Whisk fills this stage with the engine for every shop's
+# build; a shop whose API its node's engine does not answer (a preview) starts it beside its
+# pages (start.ts).
+FROM scratch AS whisk-commerce-engine
+
 # The site editor, a Next.js app that takes minutes to build, in a stage that reads only cms/: a
 # change to the shop or the storefront leaves it as it was, and the builder reuses it.
 FROM node:24-trixie-slim AS cms
@@ -47,6 +52,7 @@ ENV NODE_ENV=production
 ENV XDG_CONFIG_HOME=/tmp
 WORKDIR /app
 COPY --from=build /app/.medusa/server ./
+COPY --from=whisk-commerce-engine --chmod=755 / ./engine/
 USER nonroot
 EXPOSE 8080
 # The Sentry and OpenTelemetry SDKs add about 100 MB to a process, and this app already needs
