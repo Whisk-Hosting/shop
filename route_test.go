@@ -190,3 +190,21 @@ func TestReady(t *testing.T) {
 		t.Errorf("the editor does not answer: %d", got)
 	}
 }
+
+func TestContentAddress(t *testing.T) {
+	env := func(m map[string]string) func(string) string { return func(k string) string { return m[k] } }
+	cases := []struct {
+		env              map[string]string
+		content, cmsPort string
+	}{
+		{nil, "http://127.0.0.1:9100", "9100"},
+		{map[string]string{"CMS_URL": "http://other/"}, "http://other", ""},
+		{map[string]string{"WHISK_CONTENT_URL": "http://content.internal.whisk:9320", "CMS_URL": "http://other"}, "http://content.internal.whisk:9320", ""},
+	}
+	for _, c := range cases {
+		got := configFrom(env(c.env), nil)
+		if got.Content != c.content || got.CMSPort != c.cmsPort {
+			t.Errorf("%v: content %q, editor port %q; want %q, %q", c.env, got.Content, got.CMSPort, c.content, c.cmsPort)
+		}
+	}
+}
