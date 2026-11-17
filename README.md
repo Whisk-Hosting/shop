@@ -16,7 +16,7 @@
 <p align="center">
   <img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-14213d">
   <img alt="Whisk commerce engine" src="https://img.shields.io/badge/commerce-Whisk%20engine-14213d">
-  <img alt="Payload" src="https://img.shields.io/badge/editor-Payload-14213d">
+  <img alt="Whisk content engine" src="https://img.shields.io/badge/editor-Whisk%20content%20engine-14213d">
   <img alt="Go" src="https://img.shields.io/badge/pages-Go-14213d">
   <img alt="NZD and AUD with GST" src="https://img.shields.io/badge/sells%20in-NZD%20%7C%20AUD-e3a92b">
 </p>
@@ -153,8 +153,10 @@ security, so the agent writes only the app. This shop is one of its starting poi
 A business's website and online shop on Whisk, headless, in one app on one address. A small Go
 server draws every page from two back ends beside it: Whisk's commerce engine for products, prices, stock,
 carts, orders and payments, which answers [Medusa](https://medusajs.com)'s API and runs Medusa's
-admin screens, and [Payload](https://payloadcms.com) for the website's pages,
-each product's story, the menus and the pictures. It sells in New Zealand dollars with GST
+admin screens, and Whisk's content engine for the website's pages, each product's story, the
+menus and the pictures, which answers [Payload](https://payloadcms.com)'s API at `/cms/api` and
+runs the site editor at `/cms`. On Whisk's machines both engines answer the shop themselves; in
+a preview or on a laptop they run beside its pages. It sells in New Zealand dollars with GST
 included, or in Australia (`SHOP_COUNTRY`, below), or in both on two domains (`SHOP_MARKETS`), takes cards, Apple Pay, Google Pay and
 Afterpay through Stripe, cards through Windcave, PayPal, and bank transfer, and emails customers
 their orders. Customers sign in with an emailed code or a password. Any business can run it.
@@ -164,14 +166,14 @@ prices, approvals, pay on account) comes only with a Promoted app (`promoted: tr
 
 The business's Whisk team runs everything from one admin at `/app` with their Whisk sign-in:
 orders, products and customers, and beside them Pages, Product pages, Menu and Media, which open
-Payload's editor inside the admin. A page is a list of blocks (hero, text, picture, columns, list,
-products, form, HTML) at an address, a list block showing one of the shared lists
-(`cms/src/collections/Lists.ts`), and rich text holding pictures and callouts where they go
-(`cms/src/richtext.ts`); drafts are seen only by the team, in a preview that follows
+the site editor inside the admin. A page is a list of blocks (hero, text, picture, columns, list,
+products, form, HTML) at an address, a list block showing one of the shared lists, and rich text
+holding pictures and callouts where they go, which an agent may send as HTML
+(`{"html": "…"}`); drafts are seen only by the team, in a preview that follows
 the edit. A product's page at `/products/<handle>` shows its live price, options and stock from
 the engine, then the blocks of the product page with the same handle. A form block posts to
 `/forms/<name>`, kept in the database's `form_entries` table. A coding agent edits the pages
-through Payload's API at `/cms/api` on the shop's address, with its Whisk credential
+through the API at `/cms/api` on the shop's address, with its Whisk credential
 (`Authorization: Bearer $WHISK_TOKEN`), as the person it works for; each version of a page
 records who made it, as "Claude for Jane Doe" for an agent's change.
 
@@ -180,8 +182,8 @@ The shop's pages are at `/products` (the product list; `/shop` is sent there), `
 slash; every other address is the website's, with one `sitemap.xml` and `robots.txt` for both.
 `/` is the website's page at `/`, or the product list until there is one. A product's `brand` in
 its metadata names its brand to search engines (the shop's name otherwise). Old addresses go in `redirects.json` (`{"from": "/old", "to": "/new"}`, or
-`"status": 410` for a page that is gone). Starting content goes in `cms/content/` and is added
-once, never over an edit (`cms/src/content.ts` says how).
+`"status": 410` for a page that is gone). Starting content goes in `content/` (`content/README.md` says how)
+and is added once, never over an edit.
 
 A page's title in search results is its own and the shop's name (`Gloves | Maple Street
 Coffee`), or its own alone when both would pass 60 characters. A product page's Search fields
@@ -199,27 +201,31 @@ pictures Whisk serves at `/.whisk/` and the editor's at `/cms/api/media/file/`, 
 the one `sitemap.xml`.
 
 The look is `theme/`, plain HTML with Go's template tags: the frame (`theme/shop.html`), one file
-per block (`theme/blocks/<block>.html`, one per Payload block in `cms/src/blocks`), the shop's
+per block (`theme/blocks/<block>.html`), the shop's
 pages (`theme/pages/`), the pieces they share such as a product card or an order
 (`theme/parts/`) and `theme/shop.css`, which goes inline in every page. A block's file reads the
 block's fields as `.B.<field>`; a page reads what its handler gives it as `.Data`, and the shop,
-the menus and the cart's count beside it. Add a block by adding its file here and the block in
-`cms/src/blocks`, then `cd cms && npx payload migrate:create <name>` for the database. Files in
+the menus and the cart's count beside it. Add a block of the shop's own with two files of the
+same name: its fields in `content/blocks/<slug>.json` (`{"label": "Pricing table", "fields":
+[{"name": "heading", "type": "text", "label": "Heading"}]}`; the types are text, textarea, words,
+picture, check, number, select, link, group and rows), which the editor builds its form from,
+and its look in `theme/blocks/<slug>.html`. Files in
 `public/` are served as they are. The server's own code (`*.go`) rarely needs a change; under
 `npm run dev` a change to `theme/` shows on the next page.
 
 ```
-main.go                     the server: the engine beside it, the editor, redirects, files, pages
+main.go                     the server: the engine beside it, the editor, redirects, files, pages,
+                            and the migrate step (the commerce engine's setup: NZD with GST, the
+                            region, delivery, the storefront's key, where the app runs it)
+editor.go                   the content engine beside the server off Whisk's machines, /cms to it
 route.go                    what each request is, before the shop's pages (pure, table-tested)
 pages.go, actions.go        each page and form of the shop, a function to an Answer
 reads.go, store.go          the commerce engine's API
 catalogue.go, seo.go        money, prices, carts, orders, addresses; titles, links, structured data
 draw.go, render.go          drawing pages from theme/
 theme/                      every page: the frame, the blocks, the shop's pages, the look
-migrate.ts                  the migrate step: the engine's setup (NZD with GST, the region,
-                            delivery, the storefront's key) where the app runs it, then Payload's
 src/admin/                  Medusa's admin screens with Pages, Product pages, Menu and Media
-cms/                        Payload: pages, product pages, menus, media, its migrations
+content/                    starting content and the shop's own blocks
 scripts/shop.mjs            build, shop, start, migrate, dev
 ```
 
@@ -236,9 +242,10 @@ whisk dev --as you@example.com --roles owner -- npm run start
 ```
 
 These lines work the same in PowerShell, Command Prompt and a Unix shell. `whisk dev` runs the
-migration (`node migrate.js` in the build) first. Open http://127.0.0.1:3000 for the shop and
+migrate step (`server migrate` in the build) first. Open http://127.0.0.1:3000 for the shop and
 http://127.0.0.1:3000/app for the admin. `npm run dev` instead runs the shop from its source.
-`whisk dev` downloads Whisk's commerce engine for your computer and runs the shop on it.
+`whisk dev` downloads Whisk's commerce and content engines for your computer and runs the shop
+on them.
 
 ## Where it sells
 

@@ -19,6 +19,13 @@
     "checkJs": false,
     "strict": true
   },
-  "include": ["src/**/*", "migrate.ts"],
-  "exclude": ["node_modules", "build", "public", ".cache", "cms"]
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "build",
+    "public",
+    ".cache"
+  ]
 }

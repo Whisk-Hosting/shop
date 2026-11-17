@@ -22,21 +22,19 @@ type Request struct {
 type Kind int
 
 const (
-	Health   Kind = iota // the platform's health check
-	Go                   // a redirect to Location
-	EditLink             // the Whisk bar's Edit page: find what EditPath shows, then open the admin there
-	Editor               // the site editor and its API (Payload, beside the shop)
-	Moved                // an old address of a moved website, or a shop page's other address
-	Static               // a file from public/
-	Admin                // the admin's built screens, served here beside a shared engine
-	Shop                 // a page of the shop, which needs the storefront's context
+	Health Kind = iota // the platform's health check
+	Go                 // a redirect to Location
+	Editor             // the site editor and its API (/cms): Whisk's content engine
+	Moved              // an old address of a moved website, or a shop page's other address
+	Static             // a file from public/
+	Admin              // the admin's built screens, served here beside a shared engine
+	Shop               // a page of the shop, which needs the storefront's context
 )
 
 // Action is a decision: its kind and what that kind needs.
 type Action struct {
 	Kind     Kind
 	Location string
-	EditPath string
 	Moved    Redirect
 	File     StaticFile
 }
@@ -50,30 +48,19 @@ type Site struct {
 }
 
 var (
-	editorPath = regexp.MustCompile(`^/(cms|_next)(/.*)?$`)
-	editorPage = regexp.MustCompile(`^/cms(/|$)`)
-	editorAPI  = regexp.MustCompile(`^/cms/api(/|$)`)
+	editorPath = regexp.MustCompile(`^/cms(/|$)`)
 	adminPath  = regexp.MustCompile(`^/app(/|$)`)
-	section    = regexp.MustCompile(`^/cms/(collections|globals)/([a-z-]+)`)
 )
 
-// Decide is what the front does with a request, in order: health, the editor, an old address or a
-// shop page's other address, a file, the admin's screens, else a page of the shop.
+// Decide is what the front does with a request, in order: health, the editor (which decides itself
+// who may do what, where it opens and what the Edit link's /cms/edit finds, as on Whisk's machines),
+// an old address or a shop page's other address, a file, the admin's screens, else a page of the
+// shop.
 func Decide(s Site, r Request) Action {
-	here := r.Path + withMark(r.Query)
-	staff := IsStaff(r.Headers)
 	read := r.Method == "GET" || r.Method == "HEAD"
 	switch {
 	case r.Path == "/health/ready":
 		return Action{Kind: Health}
-	case r.Path == "/cms/edit" && !staff:
-		return Action{Kind: Go, Location: SignIn(here)}
-	case r.Path == "/cms/edit":
-		return Action{Kind: EditLink, EditPath: EditPath(r.Query)}
-	case editorPath.MatchString(r.Path) && IsEditorPage(r.Path) && !staff:
-		return Action{Kind: Go, Location: SignIn(InsideAdmin(here))}
-	case editorPath.MatchString(r.Path) && IsEditorPage(r.Path) && r.Headers["sec-fetch-dest"] == "document":
-		return Action{Kind: Go, Location: InsideAdmin(here)}
 	case editorPath.MatchString(r.Path):
 		return Action{Kind: Editor}
 	case !read:
@@ -94,10 +81,6 @@ func Decide(s Site, r Request) Action {
 	return Action{Kind: Shop}
 }
 
-// IsEditorPage says whether a path is one of the editor's pages, which are for the team; its API
-// answers anyone and decides itself what each may read or change.
-func IsEditorPage(p string) bool { return editorPage.MatchString(p) && !editorAPI.MatchString(p) }
-
 // IsStaff says whether Whisk's edge says this is the business's team (CONTRACT.md §4). Anyone but
 // a guest may run the shop.
 func IsStaff(h map[string]string) bool {
@@ -107,68 +90,6 @@ func IsStaff(h map[string]string) bool {
 
 // SignIn is Whisk's sign-in, then back to u.
 func SignIn(u string) string { return "/.whisk/login?return=" + url.QueryEscape(u) }
-
-// AdminSection is the section of the shop's admin the editor lives in for what was asked for.
-func AdminSection(p string) string {
-	m := section.FindStringSubmatch(p)
-	switch {
-	case m == nil:
-		return "pages"
-	case m[1] == "globals":
-		return "menu"
-	case m[2] == "product-pages" || m[2] == "media":
-		return m[2]
-	}
-	return "pages"
-}
-
-// InsideAdmin is the editor opened inside the shop's admin, at what u asked for.
-func InsideAdmin(u string) string {
-	p, _, _ := strings.Cut(u, "?")
-	return "/app/" + AdminSection(p) + "?to=" + url.QueryEscape(u)
-}
-
-// EditPath is the page path the Edit link asks for, or the home page when it is not one.
-func EditPath(query string) string {
-	q, _ := url.ParseQuery(query)
-	p := q.Get("path")
-	if !strings.HasPrefix(p, "/") || strings.HasPrefix(p, "//") || len(p) > 2000 || strings.ContainsAny(p, " \t\r\n#?\\") {
-		return "/"
-	}
-	return p
-}
-
-var productPath = regexp.MustCompile(`^/products/([^/]+)/?$`)
-
-// EditQuery is what the Edit link asks the editor's API for: a product's own page for
-// /products/<handle>, else the website's page with that path, in either form of the address and as
-// written or decoded (a page for every site, and each market's own).
-func EditQuery(p string) (string, url.Values) {
-	q := url.Values{"depth": {"0"}, "limit": {"1"}, "draft": {"true"}}
-	if m := productPath.FindStringSubmatch(p); m != nil {
-		q.Set("where[handle][equals]", decodeOr(m[1]))
-		return "product-pages", q
-	}
-	q = PageQuery(p)
-	q.Set("limit", "10")
-	return "pages", q
-}
-
-func decodeOr(s string) string {
-	if d, err := url.PathUnescape(s); err == nil {
-		return d
-	}
-	return s
-}
-
-// EditorFor is where the admin opens for what the Edit link found in collection: the document, or
-// the collection's list when there is none.
-func EditorFor(collection, id string) string {
-	if id == "" {
-		return InsideAdmin("/cms/collections/" + collection)
-	}
-	return InsideAdmin("/cms/collections/" + collection + "/" + url.PathEscape(id))
-}
 
 // AdminFile is the file under the admin's build an address names, when it names one plainly: no
 // dot segments, hidden names or backslashes; "" for the admin's page.

@@ -118,7 +118,7 @@ func testFront(t *testing.T) (*front, string) {
 	f := &front{
 		site:    Site{Public: "public", Has: func(string) bool { return false }},
 		theme:   func() (Theme, error) { return theme, nil },
-		content: NewHTTPContent(cms.URL),
+		content: NewHTTPContent(cms.URL, false, ""),
 		client:  &http.Client{},
 	}
 	f.routes = f.shopRoutes()

@@ -1,6 +1,6 @@
-// The site editor (Payload, at /cms) shown inside the shop's admin, so the team has one admin for
-// the shop and the website. Each section opens the editor at its own place; the editor's own menu
-// is hidden (cms/app/(payload)/custom.css) because the admin's is beside it. The address keeps
+// The site editor (Whisk's content engine, at /cms) shown inside the shop's admin, so the team has
+// one admin for the shop and the website. Each section opens the editor at its own place; the
+// editor leaves out its own menu when it is framed, because the admin's is beside it. The address keeps
 // the editor's page in ?to=, so a reload or a shared link opens the same thing.
 import { useEffect, useRef } from "react"
 

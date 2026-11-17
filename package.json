@@ -2,7 +2,7 @@
   "name": "whisk-shop",
   "version": "1.0.0",
   "private": true,
-  "description": "A shop on Whisk: its pages (a Go server), site editor and admin screens, on Whisk's commerce engine.",
+  "description": "A shop on Whisk: its pages (a Go server) and admin screens, on Whisk's commerce and content engines.",
   "license": "MIT",
   "scripts": {
     "build": "node scripts/shop.mjs build",
@@ -10,7 +10,7 @@
     "dev": "node scripts/shop.mjs dev",
     "migrate": "node scripts/shop.mjs migrate",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "go test ./... && tsx --test cms/test/*.test.ts"
+    "test": "go test ./..."
   },
   "engines": {
     "node": ">=22"
@@ -26,7 +26,6 @@
     "@types/react-dom": "18.3.7",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "tsx": "4.23.15",
     "typescript": "5.9.3",
     "vite": "7.3.7"
   },

@@ -1,7 +1,8 @@
 // The shop's front: one Go process beside Whisk's commerce engine, which answers the shop's API.
 // It serves the shop's pages, drawn from the theme (theme/) with the shop's API and the site
-// editor's content, the site editor itself (Payload, editor.go), a moved website's old addresses
-// and the shop's files. What it does with each request is decided by Decide (route.go) and, for
+// content engine's content, the site editor (Whisk's content engine, which it starts beside it off
+// Whisk's machines, editor.go), a moved website's old addresses and the shop's files. `server
+// migrate` is the migrate step. What it does with each request is decided by Decide (route.go) and, for
 // the shop's own pages, by the routes below; this file carries the decisions out.
 //
 // In production the engine the app's machine shares among its shops answers the API, named in
@@ -41,41 +42,44 @@ type Config struct {
 	Root      string
 	Content   string // the site editor's address
 	CMSPort   string
-	Engine    string // the shared engine's address (WHISK_COMMERCE_URL), or ""
-	EngineBin string // the engine inside the app, when there is no shared one
-	App       string
-	Markets   [][2]string
-	Develop   bool
+	// Whisk's content engine answers the site: drafts are read through the site's own address.
+	DraftsAtSite bool
+	Engine       string // the shared engine's address (WHISK_COMMERCE_URL), or ""
+	EngineBin    string // the engine inside the app, when there is no shared one
+	App          string
+	Markets      [][2]string
+	Develop      bool
 }
 
 func configFrom(getenv func(string) string, args []string) Config {
 	or := func(v, d string) string { return pick(v != "", v, d) }
 	cmsPort := or(getenv("CMS_PORT"), "9100")
 	return Config{
-		Port:      or(getenv("PORT"), "9000"),
-		FrontPort: or(getenv("SHOP_FRONT_PORT"), "9102"),
-		Root:      ".",
-		Content:   or(contentURL(getenv), "http://127.0.0.1:"+cmsPort),
-		CMSPort:   pick(contentURL(getenv) == "", cmsPort, ""),
-		Engine:    strings.TrimRight(getenv("WHISK_COMMERCE_URL"), "/"),
-		EngineBin: or(getenv("WHISK_COMMERCE_ENGINE"), filepath.Join("engine", "engine")),
-		App:       getenv("WHISK_APP_ID"),
-		Markets:   MarketHosts(getenv("SHOP_MARKETS")),
-		Develop:   some(args, func(a string) bool { return a == "develop" || a == "--develop" }),
+		Port:         or(getenv("PORT"), "9000"),
+		FrontPort:    or(getenv("SHOP_FRONT_PORT"), "9102"),
+		Root:         ".",
+		Content:      or(contentURL(getenv), "http://127.0.0.1:"+cmsPort),
+		CMSPort:      pick(contentURL(getenv) == "", cmsPort, ""),
+		DraftsAtSite: getenv("WHISK_CONTENT_URL") != "",
+		Engine:       strings.TrimRight(getenv("WHISK_COMMERCE_URL"), "/"),
+		EngineBin:    or(getenv("WHISK_COMMERCE_ENGINE"), filepath.Join("engine", "engine")),
+		App:          getenv("WHISK_APP_ID"),
+		Markets:      MarketHosts(getenv("SHOP_MARKETS")),
+		Develop:      some(args, func(a string) bool { return a == "develop" || a == "--develop" }),
 	}
 }
 
 type front struct {
-	cfg     Config
-	site    Site
-	theme   func() (Theme, error)
-	content Content
-	editor  http.Handler
-	hasCMS  bool
-	robots  string
-	client  *http.Client
-	routes  *http.ServeMux
-	asked   sync.Map // the shared engine's context per host: kept half a minute
+	cfg        Config
+	site       Site
+	theme      func() (Theme, error)
+	content    Content
+	editor     http.Handler
+	engineHere bool // the front started the content engine, so it is ready once the engine answers
+	robots     string
+	client     *http.Client
+	routes     *http.ServeMux
+	asked      sync.Map // the shared engine's context per host: kept half a minute
 }
 
 func main() {
@@ -90,6 +94,19 @@ func run() error {
 	cfg := configFrom(os.Getenv, os.Args[1:])
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, os.Interrupt)
 	defer stop()
+	if len(os.Args) > 1 && os.Args[1] == "migrate" {
+		return migrate(ctx, cfg)
+	}
+	key := ""
+	if cfg.CMSPort != "" {
+		var err error
+		if key, err = newKey(); err != nil {
+			return err
+		}
+		if err := runEngine(ctx, engineFor(os.Getenv, cfg.Root, cfg.CMSPort, key), cfg.Root); err != nil {
+			return err
+		}
+	}
 	at := func(f string) string { return filepath.Join(cfg.Root, f) }
 	read := func(f string) []byte { b, _ := os.ReadFile(at(f)); return b }
 	loadTheme := func() (Theme, error) { return LoadTheme(os.DirFS(at("theme")), "shop.css", ShopFuncs()) }
@@ -101,13 +118,13 @@ func run() error {
 		cfg:     cfg,
 		site:    Site{Redirects: ParseRedirects(read("redirects.json")), Public: at("public"), Has: isFile, Shared: cfg.Engine != ""},
 		theme:   pick(cfg.Develop, loadTheme, func() (Theme, error) { return theme, nil }),
-		content: NewHTTPContent(cfg.Content),
-		editor:  editorProxy(cfg.Content),
+		content: NewHTTPContent(cfg.Content, cfg.DraftsAtSite, key),
+		editor:  editorProxy(cfg.Content, key),
 		robots:  string(read("robots.txt")),
 		client:  &http.Client{Timeout: 20 * time.Second},
 	}
 	f.routes = f.shopRoutes()
-	f.hasCMS = cfg.CMSPort != "" && runEditor(ctx, at("cms"), cfg.CMSPort, cfg.Develop)
+	f.engineHere = key != ""
 
 	switch {
 	case cfg.Engine != "":
@@ -153,7 +170,7 @@ func requestOf(r *http.Request) Request {
 	for k, v := range r.Header {
 		h[strings.ToLower(k)] = strings.Join(v, ",")
 	}
-	h["host"] = r.Host
+	h["host"] = r.Host // Go keeps it out of the headers; a draft is read at the site's own address
 	return Request{Method: r.Method, Path: r.URL.Path, Query: r.URL.RawQuery, Headers: h}
 }
 
@@ -179,9 +196,6 @@ func (f *front) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case Go:
 		w.Header().Set("cache-control", "no-store")
 		http.Redirect(w, r, a.Location, http.StatusFound)
-	case EditLink:
-		w.Header().Set("cache-control", "no-store")
-		http.Redirect(w, r, f.editLink(r.Context(), req, a.EditPath), http.StatusFound)
 	case Editor:
 		f.editor.ServeHTTP(w, r)
 	case Moved:
@@ -209,18 +223,18 @@ func (f *front) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 type shopKey struct{}
 
-// ready answers the platform's health check: the pages are ready once the site editor answers,
-// when it runs here, so a visitor waking the shop waits at the edge rather than meeting a page
-// the editor did not answer in time.
+// ready answers the platform's health check: the pages are ready once the content engine answers,
+// when the front started it, so a visitor waking the shop waits at the edge rather than meeting a
+// page the engine did not answer in time.
 func (f *front) ready(w http.ResponseWriter, r *http.Request) {
-	if f.hasCMS {
+	if f.engineHere {
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
 		if _, err := f.content.Listed(ctx, Asker{}); err != nil {
 			w.Header().Set("content-type", "application/json")
 			w.Header().Set("cache-control", "no-store")
 			w.WriteHeader(http.StatusServiceUnavailable)
-			b, _ := json.Marshal(map[string]any{"ok": false, "failed": []string{"cms: " + err.Error()}})
+			b, _ := json.Marshal(map[string]any{"ok": false, "failed": []string{"content engine: " + err.Error()}})
 			_, _ = w.Write(b)
 			return
 		}
@@ -228,21 +242,6 @@ func (f *front) ready(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 	w.Header().Set("cache-control", "no-store")
 	_, _ = io.WriteString(w, `{"ok":true}`)
-}
-
-// editLink is where the Edit link opens the admin: at what the path shows (on a market's site,
-// the page that site shows), asked of the editor as the person here; at the list when there is none.
-func (f *front) editLink(ctx context.Context, req Request, p string) string {
-	collection, q := EditQuery(p)
-	docs, err := f.content.Find(ctx, Asker{Identity: req.Headers}, collection, q)
-	if err != nil || len(docs) == 0 {
-		return EditorFor(collection, "")
-	}
-	found, ok := ForSite(docs, SiteMarket(f.cfg.Markets, SiteHost(req.Headers)))
-	if !ok {
-		found = docs[0]
-	}
-	return EditorFor(collection, found.ID.String())
 }
 
 // storefront is the shop's context for this request: from the engine beside the front, or asked of
@@ -583,4 +582,24 @@ func withHealth(h http.Handler, ready http.HandlerFunc) *http.ServeMux {
 	mux.HandleFunc("GET /health/ready", ready)
 	mux.Handle("/", h)
 	return mux
+}
+
+// migrate is the migrate step (whisk.yaml): the shop's migrations and setup, which Whisk's
+// commerce engine makes itself as it opens the shop where its node's engine answers it
+// (WHISK_COMMERCE_URL), and the engine in the image (a preview's) or the one whisk dev downloaded
+// makes here. It runs with the direct database connection, before traffic moves to the new
+// version; SHOP_STEP tells the engine it signs nothing here. The site editor's tables are the
+// content engine's, which makes and moves them itself.
+func migrate(ctx context.Context, cfg Config) error {
+	if cfg.Engine != "" {
+		slog.Info("Whisk's commerce engine migrates and sets up the shop as it opens it.")
+		return nil
+	}
+	if !isFile(cfg.EngineBin) {
+		return fmt.Errorf("whisk's commerce engine is not at %s, and WHISK_COMMERCE_URL names none: run the shop with whisk dev, which downloads it, or deploy it with whisk deploy", cfg.EngineBin)
+	}
+	cmd := exec.CommandContext(ctx, cfg.EngineBin, "migrate") //nolint:gosec // the engine Whisk put in the image or whisk dev downloaded
+	cmd.Env = append(os.Environ(), "SHOP_STEP=migrate")
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	return cmd.Run()
 }

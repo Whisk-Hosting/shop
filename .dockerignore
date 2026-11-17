@@ -2,7 +2,7 @@ node_modules
 .medusa
 .git
 .whisk
-cms/node_modules
-cms/.next
-cms/media
 .github
+build
+server
+server.exe
