@@ -15,6 +15,7 @@ import { cpSync, existsSync, rmSync } from "node:fs"
 import { createRequire } from "node:module"
 import path from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
+import { plugin as adminFixes } from "./admin-fixes.mjs"
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const out = path.join(root, "build")
@@ -31,12 +32,14 @@ const go = (args, env) => spawn("go", args, root, { ...process.env, ...env })
 
 // The admin's screens: Medusa's admin dashboard with the shop's own screens (src/admin), and trade
 // ordering's when Whisk installed it (Dockerfile, whisk-shop-b2b), built into plain files the
-// server serves at /app beside an engine shared among shops, and the engine serves otherwise.
+// server serves at /app beside an engine shared among shops, and the engine serves otherwise, with
+// the fixes to Medusa's dashboard in admin-fixes.mjs.
 const buildAdmin = async (into) => {
   const { build } = await import(pathToFileURL(require.resolve("@medusajs/admin-bundler")))
   const trade = existsSync(path.join(root, "node_modules", "@whisk", "shop-b2b", "package.json"))
   rmSync(into, { recursive: true, force: true })
-  await build({ path: "/app", backendUrl: "/", outDir: into, sources: [path.join(root, "src", "admin")], plugins: trade ? ["@whisk/shop-b2b/admin"] : [] })
+  await build({ path: "/app", backendUrl: "/", outDir: into, sources: [path.join(root, "src", "admin")], plugins: trade ? ["@whisk/shop-b2b/admin"] : [],
+    vite: () => ({ plugins: [adminFixes()] }) })
 }
 
 // Everything the server reads beside itself: the theme, the files, the admin's screens, a moved

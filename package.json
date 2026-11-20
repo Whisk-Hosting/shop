@@ -10,7 +10,7 @@
     "dev": "node scripts/shop.mjs dev",
     "migrate": "node scripts/shop.mjs migrate",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "go test ./..."
+    "test": "go test ./... && node --test scripts/admin-fixes.test.mjs"
   },
   "engines": {
     "node": ">=22"
